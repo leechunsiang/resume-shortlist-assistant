@@ -166,14 +166,7 @@ export default function Home() {
         <header className="bg-transparent px-4 md:px-8 py-4 md:py-6">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-white mb-1">
-              {error === 'auth' ? (
-                <TextType 
-                  text="Welcome to Resume Shortlist Assistant"
-                  speed={50}
-                  cursor={true}
-                  cursorChar="|"
-                />
-              ) : userFirstName ? (
+              {userFirstName ? (
                 <TextType 
                   text={`Welcome back, ${userFirstName}!`}
                   speed={50}
@@ -184,9 +177,7 @@ export default function Home() {
                 'Welcome back!'
               )}
             </h1>
-            <p className="text-sm md:text-base text-gray-400">
-              {error === 'auth' ? 'AI-powered resume screening and shortlisting tool' : 'Overview of your recruitment pipeline'}
-            </p>
+            <p className="text-sm md:text-base text-gray-400">Overview of your recruitment pipeline</p>
           </div>
         </header>
 
@@ -223,7 +214,7 @@ export default function Home() {
           ) : error !== 'auth' ? (
             <>
               {/* Bento Box Grid Layout - Responsive */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 lg:grid-rows-2 gap-4 lg:h-[calc(100vh-16rem)]">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 lg:grid-rows-2 gap-4 md:gap-6 lg:h-[calc(100vh-12rem)]">
                 
                 {/* Top Left - Total Candidates (Small) */}
                 <motion.div 
@@ -234,16 +225,16 @@ export default function Home() {
                     candidatesRipple.addRipple(e);
                     router.push('/candidates');
                   }}
-                  className="bg-gradient-to-br from-emerald-500/20 to-emerald-700/20 backdrop-blur-xl border border-emerald-500/30 rounded-2xl p-4 lg:p-6 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300 ease-out flex flex-col justify-center shadow-lg shadow-emerald-500/10 hover:shadow-2xl hover:shadow-emerald-500/30 hover:border-emerald-400/60 cursor-pointer"
+                  className="bg-gradient-to-br from-emerald-500/20 to-emerald-700/20 backdrop-blur-xl border border-emerald-500/30 rounded-2xl p-6 lg:p-8 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300 ease-out min-h-[140px] flex flex-col justify-center shadow-lg shadow-emerald-500/10 hover:shadow-2xl hover:shadow-emerald-500/30 hover:border-emerald-400/60 cursor-pointer"
                 >
                   <RippleEffect ripples={candidatesRipple.ripples} color="rgba(16, 185, 129, 0.4)" />
                   <div className="absolute inset-0 bg-gradient-to-br from-emerald-400/5 via-transparent to-transparent"></div>
                   <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-400/10 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-emerald-400/20 transition-all duration-300"></div>
-                  <Users className="w-7 h-7 text-emerald-300 mb-3 relative z-10 drop-shadow-lg group-hover:scale-110 transition-transform duration-300" />
-                  <h3 className="text-3xl lg:text-4xl font-bold text-white mb-1 relative z-10 drop-shadow-md">
+                  <Users className="w-8 h-8 lg:w-10 lg:h-10 text-emerald-300 mb-4 relative z-10 drop-shadow-lg group-hover:scale-110 transition-transform duration-300" />
+                  <h3 className="text-4xl lg:text-5xl font-bold text-white mb-2 relative z-10 drop-shadow-md">
                     <AnimatedCounter value={stats?.total_candidates || 0} duration={1.5} delay={0.2} />
                   </h3>
-                  <p className="text-emerald-200 text-sm font-medium relative z-10">Total Candidates</p>
+                  <p className="text-emerald-200 text-sm lg:text-base font-medium relative z-10">Total Candidates</p>
                 </motion.div>
 
                 {/* Top Center-Left - Active Jobs Count (Small) */}
@@ -255,16 +246,16 @@ export default function Home() {
                     jobsRipple.addRipple(e);
                     router.push('/job-listings');
                   }}
-                  className="bg-gradient-to-br from-blue-500/20 to-blue-700/20 backdrop-blur-xl border border-blue-500/30 rounded-2xl p-4 lg:p-6 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300 ease-out flex flex-col justify-center shadow-lg shadow-blue-500/10 hover:shadow-2xl hover:shadow-blue-500/30 hover:border-blue-400/60 cursor-pointer"
+                  className="bg-gradient-to-br from-blue-500/20 to-blue-700/20 backdrop-blur-xl border border-blue-500/30 rounded-2xl p-6 lg:p-8 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300 ease-out min-h-[140px] flex flex-col justify-center shadow-lg shadow-blue-500/10 hover:shadow-2xl hover:shadow-blue-500/30 hover:border-blue-400/60 cursor-pointer"
                 >
                   <RippleEffect ripples={jobsRipple.ripples} color="rgba(59, 130, 246, 0.4)" />
                   <div className="absolute inset-0 bg-gradient-to-br from-blue-400/5 via-transparent to-transparent"></div>
                   <div className="absolute top-0 right-0 w-32 h-32 bg-blue-400/10 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-blue-400/20 transition-all duration-300"></div>
-                  <Briefcase className="w-7 h-7 text-blue-300 mb-3 relative z-10 drop-shadow-lg group-hover:scale-110 transition-transform duration-300" />
-                  <h3 className="text-3xl lg:text-4xl font-bold text-white mb-1 relative z-10 drop-shadow-md">
+                  <Briefcase className="w-8 h-8 lg:w-10 lg:h-10 text-blue-300 mb-4 relative z-10 drop-shadow-lg group-hover:scale-110 transition-transform duration-300" />
+                  <h3 className="text-4xl lg:text-5xl font-bold text-white mb-2 relative z-10 drop-shadow-md">
                     <AnimatedCounter value={stats?.active_jobs || 0} duration={1.5} delay={0.3} />
                   </h3>
-                  <p className="text-blue-200 text-sm font-medium relative z-10">Active Jobs</p>
+                  <p className="text-blue-200 text-sm lg:text-base font-medium relative z-10">Active Jobs</p>
                 </motion.div>
 
                 {/* Top Right - Recent Candidates (Large, spans 2 columns and 2 rows on desktop) */}
@@ -453,16 +444,16 @@ export default function Home() {
                   onClick={(e) => {
                     shortlistedRipple.addRipple(e);
                   }}
-                  className="bg-gradient-to-br from-purple-500/20 to-purple-700/20 backdrop-blur-xl border border-purple-500/30 rounded-2xl p-4 lg:p-6 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300 ease-out flex flex-col justify-center shadow-lg shadow-purple-500/10 hover:shadow-2xl hover:shadow-purple-500/30 hover:border-purple-400/60 cursor-pointer"
+                  className="bg-gradient-to-br from-purple-500/20 to-purple-700/20 backdrop-blur-xl border border-purple-500/30 rounded-2xl p-6 lg:p-8 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300 ease-out min-h-[140px] flex flex-col justify-center shadow-lg shadow-purple-500/10 hover:shadow-2xl hover:shadow-purple-500/30 hover:border-purple-400/60 cursor-pointer"
                 >
                   <RippleEffect ripples={shortlistedRipple.ripples} color="rgba(168, 85, 247, 0.4)" />
                   <div className="absolute inset-0 bg-gradient-to-br from-purple-400/5 via-transparent to-transparent"></div>
                   <div className="absolute top-0 right-0 w-32 h-32 bg-purple-400/10 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-purple-400/20 transition-all duration-300"></div>
-                  <Clock className="w-7 h-7 text-purple-300 mb-3 relative z-10 drop-shadow-lg group-hover:scale-110 transition-transform duration-300" />
-                  <h3 className="text-3xl lg:text-4xl font-bold text-white mb-1 relative z-10 drop-shadow-md">
+                  <Clock className="w-8 h-8 lg:w-10 lg:h-10 text-purple-300 mb-4 relative z-10 drop-shadow-lg group-hover:scale-110 transition-transform duration-300" />
+                  <h3 className="text-4xl lg:text-5xl font-bold text-white mb-2 relative z-10 drop-shadow-md">
                     <AnimatedCounter value={stats?.shortlisted_count || 0} duration={1.5} delay={0.6} />
                   </h3>
-                  <p className="text-purple-200 text-sm font-medium relative z-10">Shortlisted</p>
+                  <p className="text-purple-200 text-sm lg:text-base font-medium relative z-10">Shortlisted</p>
                 </motion.div>
 
                 {/* Bottom Right - Success Rate (Small) */}
@@ -473,16 +464,16 @@ export default function Home() {
                   onClick={(e) => {
                     successRateRipple.addRipple(e);
                   }}
-                  className="bg-gradient-to-br from-orange-500/20 to-orange-700/20 backdrop-blur-xl border border-orange-500/30 rounded-2xl p-4 lg:p-6 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300 ease-out flex flex-col justify-center shadow-lg shadow-orange-500/10 hover:shadow-2xl hover:shadow-orange-500/30 hover:border-orange-400/60 cursor-pointer"
+                  className="bg-gradient-to-br from-orange-500/20 to-orange-700/20 backdrop-blur-xl border border-orange-500/30 rounded-2xl p-6 lg:p-8 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300 ease-out min-h-[140px] flex flex-col justify-center shadow-lg shadow-orange-500/10 hover:shadow-2xl hover:shadow-orange-500/30 hover:border-orange-400/60 cursor-pointer"
                 >
                   <RippleEffect ripples={successRateRipple.ripples} color="rgba(249, 115, 22, 0.4)" />
                   <div className="absolute inset-0 bg-gradient-to-br from-orange-400/5 via-transparent to-transparent"></div>
                   <div className="absolute top-0 right-0 w-32 h-32 bg-orange-400/10 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-orange-400/20 transition-all duration-300"></div>
-                  <TrendingUp className="w-7 h-7 text-orange-300 mb-3 relative z-10 drop-shadow-lg group-hover:scale-110 transition-transform duration-300" />
-                  <h3 className="text-3xl lg:text-4xl font-bold text-white mb-1 relative z-10 drop-shadow-md">
+                  <TrendingUp className="w-8 h-8 lg:w-10 lg:h-10 text-orange-300 mb-4 relative z-10 drop-shadow-lg group-hover:scale-110 transition-transform duration-300" />
+                  <h3 className="text-4xl lg:text-5xl font-bold text-white mb-2 relative z-10 drop-shadow-md">
                     <AnimatedCounter value={stats?.success_rate || 0} duration={1.5} delay={0.7} suffix="%" />
                   </h3>
-                  <p className="text-orange-200 text-sm font-medium relative z-10">Success Rate</p>
+                  <p className="text-orange-200 text-sm lg:text-base font-medium relative z-10">Success Rate</p>
                 </motion.div>
 
               </div>
