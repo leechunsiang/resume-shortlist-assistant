@@ -523,6 +523,8 @@ export const authApi = {
     const user = await authApi.getCurrentUser();
     if (!user) throw new Error('No user logged in');
 
+    console.log('[CLIENT] Starting delete account for user:', user.id);
+
     // Call the API route to delete the account (server-side)
     const response = await fetch('/api/delete-account', {
       method: 'POST',
@@ -532,12 +534,20 @@ export const authApi = {
       body: JSON.stringify({ userId: user.id }),
     });
 
+    console.log('[CLIENT] Delete account response status:', response.status);
+
     if (!response.ok) {
       const error = await response.json();
+      console.error('[CLIENT] Delete account error:', error);
       throw new Error(error.error || 'Failed to delete account');
     }
 
+    const result = await response.json();
+    console.log('[CLIENT] Delete account result:', result);
+
     // Sign out the user after successful deletion
+    console.log('[CLIENT] Signing out user...');
     await authApi.signOut();
+    console.log('[CLIENT] User signed out successfully');
   }
 };
