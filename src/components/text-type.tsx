@@ -23,26 +23,43 @@ const TextType: React.FC<TextTypeProps> = ({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
   const [showCursor, setShowCursor] = useState(true);
+  const [hasStarted, setHasStarted] = useState(false);
+
+  // Reset state when text changes
+  useEffect(() => {
+    setDisplayedText('');
+    setCurrentIndex(0);
+    setIsComplete(false);
+    setShowCursor(true);
+    setHasStarted(false);
+  }, [text]);
 
   useEffect(() => {
-    const startTimeout = setTimeout(() => {
-      if (currentIndex < text.length) {
-        const timeout = setTimeout(() => {
-          setDisplayedText((prev) => prev + text[currentIndex]);
-          setCurrentIndex((prev) => prev + 1);
-        }, speed);
-        return () => clearTimeout(timeout);
-      } else if (!isComplete) {
-        setIsComplete(true);
-        setShowCursor(false); // Hide cursor when complete
-        if (onComplete) {
-          onComplete();
-        }
-      }
-    }, delay);
+    if (!hasStarted) {
+      const startTimeout = setTimeout(() => {
+        setHasStarted(true);
+      }, delay);
+      return () => clearTimeout(startTimeout);
+    }
+  }, [delay, hasStarted]);
 
-    return () => clearTimeout(startTimeout);
-  }, [currentIndex, text, speed, delay, isComplete, onComplete]);
+  useEffect(() => {
+    if (!hasStarted) return;
+
+    if (currentIndex < text.length) {
+      const timeout = setTimeout(() => {
+        setDisplayedText((prev) => prev + text[currentIndex]);
+        setCurrentIndex((prev) => prev + 1);
+      }, speed);
+      return () => clearTimeout(timeout);
+    } else if (!isComplete) {
+      setIsComplete(true);
+      setShowCursor(false);
+      if (onComplete) {
+        onComplete();
+      }
+    }
+  }, [currentIndex, text, speed, isComplete, onComplete, hasStarted]);
 
   useEffect(() => {
     if (cursor && !isComplete) {

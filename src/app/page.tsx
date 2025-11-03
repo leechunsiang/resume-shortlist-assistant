@@ -166,10 +166,8 @@ export default function Home() {
         {/* Header */}
         <header className="bg-transparent px-4 md:px-8 py-4 md:py-6">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-white mb-1">
-              {loading ? (
-                <span className="opacity-0">Loading...</span>
-              ) : userFirstName ? (
+            <h1 className="text-2xl md:text-3xl font-bold text-white mb-1 min-h-[2.5rem]">
+              {userFirstName ? (
                 <TextType 
                   text={`Welcome back, ${userFirstName}!`}
                   speed={50}
@@ -185,14 +183,10 @@ export default function Home() {
                   cursorChar="|"
                   onComplete={() => setHeaderAnimationComplete(true)}
                 />
-              ) : (
-                'Welcome back!'
-              )}
+              ) : null}
             </h1>
-            <p className="text-sm md:text-base text-gray-400">
-              {loading ? (
-                <span className="opacity-0">Loading...</span>
-              ) : error === 'auth' ? (
+            <p className="text-sm md:text-base text-gray-400 min-h-[1.5rem]">
+              {error === 'auth' ? (
                 headerAnimationComplete ? (
                   <TextType 
                     text="Automate Resume Shortlisting with Clarity and Control."
@@ -208,9 +202,7 @@ export default function Home() {
                   cursor={true}
                   cursorChar="|"
                 />
-              ) : (
-                !headerAnimationComplete ? null : 'Overview of your recruitment pipeline'
-              )}
+              ) : null}
             </p>
           </div>
         </header>
