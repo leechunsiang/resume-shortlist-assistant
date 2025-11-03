@@ -21,6 +21,7 @@ export default function Home() {
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [userFirstName, setUserFirstName] = useState<string>('');
   const [isAnimationComplete, setIsAnimationComplete] = useState(false);
+  const [headerAnimationComplete, setHeaderAnimationComplete] = useState(false);
   
   // Ripple effects for each card
   const candidatesRipple = useRipple();
@@ -172,12 +173,41 @@ export default function Home() {
                   speed={50}
                   cursor={true}
                   cursorChar="|"
+                  onComplete={() => setHeaderAnimationComplete(true)}
+                />
+              ) : error === 'auth' ? (
+                <TextType 
+                  text="Welcome to Resume Shortlist Assistant!"
+                  speed={50}
+                  cursor={true}
+                  cursorChar="|"
+                  onComplete={() => setHeaderAnimationComplete(true)}
                 />
               ) : (
                 'Welcome back!'
               )}
             </h1>
-            <p className="text-sm md:text-base text-gray-400">Overview of your recruitment pipeline</p>
+            <p className="text-sm md:text-base text-gray-400">
+              {error === 'auth' ? (
+                headerAnimationComplete ? (
+                  <TextType 
+                    text="Automate Resume Shortlisting with Clarity and Control."
+                    speed={40}
+                    cursor={true}
+                    cursorChar="|"
+                  />
+                ) : null
+              ) : userFirstName && headerAnimationComplete ? (
+                <TextType 
+                  text="Overview of your recruitment pipeline"
+                  speed={40}
+                  cursor={true}
+                  cursorChar="|"
+                />
+              ) : (
+                !headerAnimationComplete ? null : 'Overview of your recruitment pipeline'
+              )}
+            </p>
           </div>
         </header>
 
