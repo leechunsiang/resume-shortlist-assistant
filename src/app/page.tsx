@@ -214,7 +214,7 @@ export default function Home() {
           ) : error !== 'auth' ? (
             <>
               {/* Bento Box Grid Layout - Responsive */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 lg:grid-rows-2 gap-4 md:gap-6 lg:h-[calc(100vh-12rem)]">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 lg:auto-rows-fr gap-4 md:gap-6 lg:h-[calc(100vh-14rem)]">
                 
                 {/* Top Left - Total Candidates (Small) */}
                 <motion.div 
@@ -258,12 +258,12 @@ export default function Home() {
                   <p className="text-blue-200 text-sm lg:text-base font-medium relative z-10">Active Jobs</p>
                 </motion.div>
 
-                {/* Top Right - Recent Candidates (Large, spans 2 columns and 2 rows on desktop) */}
+                {/* Top Right - Recent Candidates (Large, spans 2 columns on desktop) */}
                 <motion.div 
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.6, delay: 0.3 }}
-                  className="md:col-span-2 lg:row-span-2 bg-gray-900/40 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-6 flex flex-col min-h-[400px] lg:min-h-0 lg:h-full shadow-2xl shadow-black/20 relative overflow-hidden"
+                  className="md:col-span-2 lg:col-span-2 lg:row-span-2 bg-gray-900/40 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-6 flex flex-col min-h-[400px] lg:min-h-0 lg:h-full shadow-2xl shadow-black/20 relative overflow-hidden"
                 >
                   <div className="absolute inset-0 bg-gradient-to-br from-gray-800/10 via-transparent to-gray-900/20 pointer-events-none"></div>
                   <div className="absolute -top-24 -right-24 w-48 h-48 bg-emerald-500/5 rounded-full blur-3xl"></div>
@@ -360,12 +360,12 @@ export default function Home() {
                   )}
                 </motion.div>
 
-                {/* Middle Left - Active Job Listings (Large, spans 2 columns and 2 rows on desktop) */}
+                {/* Middle Left - Active Job Listings (Large, spans 2 columns on desktop) */}
                 <motion.div 
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.6, delay: 0.4 }}
-                  className="md:col-span-2 lg:row-span-2 bg-gray-900/40 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-6 flex flex-col min-h-[400px] lg:min-h-0 lg:h-full shadow-2xl shadow-black/20 relative overflow-hidden"
+                  className="md:col-span-2 lg:col-span-2 lg:row-span-2 bg-gray-900/40 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-6 flex flex-col min-h-[400px] lg:min-h-0 lg:h-full shadow-2xl shadow-black/20 relative overflow-hidden"
                 >
                   <div className="absolute inset-0 bg-gradient-to-br from-gray-800/10 via-transparent to-gray-900/20 pointer-events-none"></div>
                   <div className="absolute -top-24 -right-24 w-48 h-48 bg-blue-500/5 rounded-full blur-3xl"></div>
