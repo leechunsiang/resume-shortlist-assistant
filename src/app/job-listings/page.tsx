@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { jobsApi, candidatesApi, organizationsApi, authApi, type JobListing } from '@/lib/supabase';
 import { DashboardLayout } from '@/components/dashboard-layout';
 import { AnimatePresence, motion } from 'framer-motion';
-import { X, Sparkles, Edit, Users, Trash2, Download, FileText } from 'lucide-react';
+import { X, Sparkles, Edit, Users, Trash2, Download, FileText, Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import TextType from '@/components/text-type';
 import { useRipple, RippleEffect } from '@/components/ripple-effect';
@@ -12,6 +12,17 @@ import { AnimatedCounter, PulseStatusBadge } from '@/components/animated-counter
 import { GlassButton } from '@/components/ui/glass-button';
 import { Progress } from '@/components/ui/progress-1';
 import { exportJobsToCSV, exportJobsToPDF } from '@/lib/export';
+import { FormattedDescription } from '@/components/formatted-description';
+import {
+  Stepper,
+  StepperContent,
+  StepperIndicator,
+  StepperItem,
+  StepperNav,
+  StepperSeparator,
+  StepperTitle,
+  StepperTrigger,
+} from '@/components/ui/stepper';
 
 export default function JobListings() {
   const router = useRouter();
@@ -34,6 +45,7 @@ export default function JobListings() {
   const [editingJobId, setEditingJobId] = useState<string | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [jobToDelete, setJobToDelete] = useState<string | null>(null);
+  const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
     title: '',
     department: '',
@@ -105,6 +117,13 @@ export default function JobListings() {
 
   const handleCreateJob = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Only submit if on step 4
+    if (currentStep !== 4) {
+      console.log('Prevented submission - not on step 4, current step:', currentStep);
+      return;
+    }
+    
     if (!organizationId || !userId) return;
     
     setIsSubmitting(true);
@@ -150,6 +169,7 @@ export default function JobListings() {
         requirements: '',
         status: 'draft'
       });
+      setCurrentStep(1); // Reset to first step
       setIsModalOpen(false);
       setIsEditMode(false);
       setEditingJobId(null);
@@ -173,6 +193,7 @@ export default function JobListings() {
     });
     setIsEditMode(true);
     setEditingJobId(job.id);
+    setCurrentStep(1); // Reset to first step
     setIsModalOpen(true);
   };
 
@@ -453,7 +474,10 @@ export default function JobListings() {
               </div>
 
               <GlassButton
-                onClick={() => setIsModalOpen(true)}
+                onClick={() => {
+                  setCurrentStep(1); // Reset to first step when opening
+                  setIsModalOpen(true);
+                }}
                 size="default"
                 className="glass-emerald"
                 contentClassName="flex items-center space-x-2"
@@ -589,7 +613,10 @@ export default function JobListings() {
                   <p className="text-gray-500 text-sm mt-2 relative z-10">Create your first job listing to get started</p>
                   <div className="mt-6 inline-block relative z-10">
                     <GlassButton
-                      onClick={() => setIsModalOpen(true)}
+                      onClick={() => {
+                        setCurrentStep(1); // Reset to first step when opening
+                        setIsModalOpen(true);
+                      }}
                       size="default"
                       className="glass-emerald shadow-lg shadow-emerald-500/20"
                     >
@@ -689,167 +716,374 @@ export default function JobListings() {
         </div>
       </div>
 
-      {/* Create/Edit Job Modal */}
+      {/* Create/Edit Job Modal with Stepper */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
-          <div className="bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700 rounded-2xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-white">{isEditMode ? 'Edit Job' : 'Create New Job'}</h2>
-              <button
-                onClick={() => {
-                  setIsModalOpen(false);
-                  setIsEditMode(false);
-                  setEditingJobId(null);
-                  setFormData({
-                    title: '',
-                    department: '',
-                    location: '',
-                    description: '',
-                    requirements: '',
-                    status: 'draft'
-                  });
+          <div className="bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700 rounded-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex">
+            {/* Left Side - Stepper Navigation */}
+            <div className="w-64 bg-gray-900/50 border-r border-gray-700 p-6 flex flex-col">
+              <div className="mb-8">
+                <h2 className="text-xl font-bold text-white">{isEditMode ? 'Edit Job' : 'Create New Job'}</h2>
+                <p className="text-sm text-gray-400 mt-1">Fill in the job details</p>
+              </div>
+              
+              <Stepper
+                value={currentStep}
+                onValueChange={setCurrentStep}
+                orientation="vertical"
+                className="flex-1"
+                indicators={{
+                  completed: <Check className="size-4" />,
                 }}
-                className="text-gray-400 hover:text-white transition-colors"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+                <StepperNav>
+                  <StepperItem step={1} className="relative items-start">
+                    <StepperTrigger className="items-start pb-8 gap-2.5 w-full">
+                      <StepperIndicator className="data-[state=completed]:bg-emerald-500 data-[state=completed]:text-white data-[state=active]:bg-emerald-500 data-[state=active]:text-white data-[state=inactive]:bg-gray-700 data-[state=inactive]:text-gray-400">
+                        1
+                      </StepperIndicator>
+                      <div className="mt-0.5 text-left">
+                        <StepperTitle className="text-white">Job Title</StepperTitle>
+                        <p className="text-xs text-gray-400 mt-1">Basic job information</p>
+                      </div>
+                    </StepperTrigger>
+                    <StepperSeparator className="absolute inset-y-0 top-7 left-3 -order-1 m-0 -translate-x-1/2 h-[calc(100%-2rem)] group-data-[state=completed]/step:bg-emerald-500" />
+                  </StepperItem>
+
+                  <StepperItem step={2} className="relative items-start">
+                    <StepperTrigger className="items-start pb-8 gap-2.5 w-full">
+                      <StepperIndicator className="data-[state=completed]:bg-emerald-500 data-[state=completed]:text-white data-[state=active]:bg-emerald-500 data-[state=active]:text-white data-[state=inactive]:bg-gray-700 data-[state=inactive]:text-gray-400">
+                        2
+                      </StepperIndicator>
+                      <div className="mt-0.5 text-left">
+                        <StepperTitle className="text-white">Department & Location</StepperTitle>
+                        <p className="text-xs text-gray-400 mt-1">Where this role belongs</p>
+                      </div>
+                    </StepperTrigger>
+                    <StepperSeparator className="absolute inset-y-0 top-7 left-3 -order-1 m-0 -translate-x-1/2 h-[calc(100%-2rem)] group-data-[state=completed]/step:bg-emerald-500" />
+                  </StepperItem>
+
+                  <StepperItem step={3} className="relative items-start">
+                    <StepperTrigger className="items-start pb-8 gap-2.5 w-full">
+                      <StepperIndicator className="data-[state=completed]:bg-emerald-500 data-[state=completed]:text-white data-[state=active]:bg-emerald-500 data-[state=active]:text-white data-[state=inactive]:bg-gray-700 data-[state=inactive]:text-gray-400">
+                        3
+                      </StepperIndicator>
+                      <div className="mt-0.5 text-left">
+                        <StepperTitle className="text-white">Requirements</StepperTitle>
+                        <p className="text-xs text-gray-400 mt-1">Skills and qualifications</p>
+                      </div>
+                    </StepperTrigger>
+                    <StepperSeparator className="absolute inset-y-0 top-7 left-3 -order-1 m-0 -translate-x-1/2 h-[calc(100%-2rem)] group-data-[state=completed]/step:bg-emerald-500" />
+                  </StepperItem>
+
+                  <StepperItem step={4} className="relative items-start">
+                    <StepperTrigger className="items-start pb-0 gap-2.5 w-full">
+                      <StepperIndicator className="data-[state=completed]:bg-emerald-500 data-[state=completed]:text-white data-[state=active]:bg-emerald-500 data-[state=active]:text-white data-[state=inactive]:bg-gray-700 data-[state=inactive]:text-gray-400">
+                        4
+                      </StepperIndicator>
+                      <div className="mt-0.5 text-left">
+                        <StepperTitle className="text-white">Job Description</StepperTitle>
+                        <p className="text-xs text-gray-400 mt-1">Detailed role description</p>
+                      </div>
+                    </StepperTrigger>
+                  </StepperItem>
+                </StepperNav>
+              </Stepper>
             </div>
 
-            <form onSubmit={handleCreateJob} className="space-y-6">
-              {/* Job Title */}
-              <div>
-                <label htmlFor="title" className="block text-sm font-medium text-gray-300 mb-2">
-                  Job Title <span className="text-red-400">*</span>
-                </label>
-                <input
-                  type="text"
-                  id="title"
-                  name="title"
-                  value={formData.title}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                  placeholder="e.g., Senior Full Stack Developer"
-                />
-              </div>
-
-              {/* Department */}
-              <div>
-                <label htmlFor="department" className="block text-sm font-medium text-gray-300 mb-2">
-                  Department
-                </label>
-                <input
-                  type="text"
-                  id="department"
-                  name="department"
-                  value={formData.department}
-                  onChange={handleInputChange}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                  placeholder="e.g., Engineering"
-                />
-              </div>
-
-              {/* Location */}
-              <div>
-                <label htmlFor="location" className="block text-sm font-medium text-gray-300 mb-2">
-                  Location
-                </label>
-                <input
-                  type="text"
-                  id="location"
-                  name="location"
-                  value={formData.location}
-                  onChange={handleInputChange}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                  placeholder="e.g., Remote, San Francisco, CA"
-                />
-              </div>
-
-              {/* Description */}
-              <div>
-                <label htmlFor="description" className="block text-sm font-medium text-gray-300 mb-2">
-                  Job Description
-                </label>
-                <textarea
-                  id="description"
-                  name="description"
-                  value={formData.description}
-                  onChange={handleInputChange}
-                  rows={4}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none"
-                  placeholder="Describe the role, responsibilities, and what you're looking for..."
-                />
-              </div>
-
-              {/* Requirements */}
-              <div>
-                <label htmlFor="requirements" className="block text-sm font-medium text-gray-300 mb-2">
-                  Requirements (comma-separated)
-                </label>
-                <textarea
-                  id="requirements"
-                  name="requirements"
-                  value={formData.requirements}
-                  onChange={handleInputChange}
-                  rows={3}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none"
-                  placeholder="e.g., React, Node.js, TypeScript, 5+ years experience"
-                />
-              </div>
-
-              {/* Status */}
-              <div>
-                <label htmlFor="status" className="block text-sm font-medium text-gray-300 mb-2">
-                  Status
-                </label>
-                <select
-                  id="status"
-                  name="status"
-                  value={formData.status}
-                  onChange={handleInputChange}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                >
-                  <option value="draft">Draft</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
-              </div>
-
-              {/* Error Message */}
-              {error && (
-                <div className="bg-red-900/20 border border-red-500/50 rounded-lg p-4 text-red-400">
-                  <p className="text-sm">{error}</p>
+            {/* Right Side - Form Content */}
+            <div className="flex-1 p-8 overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-lg font-semibold text-white">Step {currentStep} of 4</h3>
+                  <p className="text-sm text-gray-400 mt-0.5">
+                    {currentStep === 1 && "Enter the job title"}
+                    {currentStep === 2 && "Specify department and location"}
+                    {currentStep === 3 && "List the requirements"}
+                    {currentStep === 4 && "Add the job description"}
+                  </p>
                 </div>
-              )}
-
-              {/* Action Buttons */}
-              <div className="flex items-center justify-end space-x-4 pt-4">
                 <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-6 py-3 border border-gray-700 rounded-lg text-gray-300 hover:bg-gray-800 transition-colors font-medium"
-                  disabled={isSubmitting}
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    setIsEditMode(false);
+                    setEditingJobId(null);
+                    setCurrentStep(1);
+                    setFormData({
+                      title: '',
+                      department: '',
+                      location: '',
+                      description: '',
+                      requirements: '',
+                      status: 'draft'
+                    });
+                  }}
+                  className="text-gray-400 hover:text-white transition-colors"
                 >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors flex items-center space-x-2"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                      <span>{isEditMode ? 'Updating...' : 'Creating...'}</span>
-                    </>
-                  ) : (
-                    <span>{isEditMode ? 'Update Job' : 'Create Job'}</span>
-                  )}
+                  <X className="w-6 h-6" />
                 </button>
               </div>
-            </form>
+
+              <form 
+                onSubmit={handleCreateJob} 
+                onKeyDown={(e) => {
+                  // Prevent Enter key from submitting form except when on step 4
+                  if (e.key === 'Enter' && currentStep < 4 && e.target instanceof HTMLInputElement) {
+                    e.preventDefault();
+                    setCurrentStep(currentStep + 1);
+                  }
+                }}
+                className="space-y-6"
+              >
+                <Stepper value={currentStep} onValueChange={setCurrentStep}>
+                  {/* Step 1: Job Title */}
+                  <StepperContent value={1}>
+                    <div className="space-y-4">
+                      <div>
+                        <label htmlFor="title" className="block text-sm font-medium text-gray-300 mb-2">
+                          Job Title <span className="text-red-400">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          id="title"
+                          name="title"
+                          value={formData.title}
+                          onChange={handleInputChange}
+                          required
+                          className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                          placeholder="e.g., Senior Full Stack Developer"
+                        />
+                      </div>
+
+                      <div>
+                        <label htmlFor="status" className="block text-sm font-medium text-gray-300 mb-2">
+                          Status
+                        </label>
+                        <select
+                          id="status"
+                          name="status"
+                          value={formData.status}
+                          onChange={handleInputChange}
+                          className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                        >
+                          <option value="draft">Draft</option>
+                          <option value="active">Active</option>
+                          <option value="inactive">Inactive</option>
+                        </select>
+                      </div>
+                    </div>
+                  </StepperContent>
+
+                  {/* Step 2: Department & Location */}
+                  <StepperContent value={2}>
+                    <div className="space-y-4">
+                      <div>
+                        <label htmlFor="department" className="block text-sm font-medium text-gray-300 mb-2">
+                          Department
+                        </label>
+                        <input
+                          type="text"
+                          id="department"
+                          name="department"
+                          value={formData.department}
+                          onChange={handleInputChange}
+                          className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                          placeholder="e.g., Engineering"
+                        />
+                      </div>
+
+                      <div>
+                        <label htmlFor="location" className="block text-sm font-medium text-gray-300 mb-2">
+                          Location
+                        </label>
+                        <input
+                          type="text"
+                          id="location"
+                          name="location"
+                          value={formData.location}
+                          onChange={handleInputChange}
+                          className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                          placeholder="e.g., Remote, San Francisco, CA"
+                        />
+                      </div>
+                    </div>
+                  </StepperContent>
+
+                  {/* Step 3: Requirements */}
+                  <StepperContent value={3}>
+                    <div>
+                      <label htmlFor="requirements" className="block text-sm font-medium text-gray-300 mb-2">
+                        Requirements (comma-separated)
+                      </label>
+                      <textarea
+                        id="requirements"
+                        name="requirements"
+                        value={formData.requirements}
+                        onChange={handleInputChange}
+                        rows={8}
+                        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none"
+                        placeholder="e.g., React, Node.js, TypeScript, 5+ years experience"
+                      />
+                      <p className="text-xs text-gray-400 mt-2">Separate each requirement with a comma</p>
+                    </div>
+                  </StepperContent>
+
+                  {/* Step 4: Job Description */}
+                  <StepperContent value={4}>
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <label htmlFor="description" className="block text-sm font-medium text-gray-300">
+                          Job Description
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              const textarea = document.getElementById('description') as HTMLTextAreaElement;
+                              const cursorPos = textarea.selectionStart;
+                              const textBefore = formData.description.substring(0, cursorPos);
+                              const textAfter = formData.description.substring(cursorPos);
+                              const newText = textBefore + '\n• ' + textAfter;
+                              setFormData({ ...formData, description: newText });
+                              setTimeout(() => {
+                                textarea.focus();
+                                textarea.selectionStart = textarea.selectionEnd = cursorPos + 3;
+                              }, 0);
+                            }}
+                            className="px-3 py-1 text-xs bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 rounded-md border border-emerald-500/30 transition-colors"
+                          >
+                            + Bullet Point
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              const textarea = document.getElementById('description') as HTMLTextAreaElement;
+                              const cursorPos = textarea.selectionStart;
+                              const textBefore = formData.description.substring(0, cursorPos);
+                              const textAfter = formData.description.substring(cursorPos);
+                              const newText = textBefore + '\n\nSection Title:\n\n' + textAfter;
+                              setFormData({ ...formData, description: newText });
+                              setTimeout(() => {
+                                textarea.focus();
+                                const titleStart = cursorPos + 2;
+                                textarea.selectionStart = titleStart;
+                                textarea.selectionEnd = titleStart + 13; // Select "Section Title"
+                              }, 0);
+                            }}
+                            className="px-3 py-1 text-xs bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-md border border-blue-500/30 transition-colors"
+                          >
+                            + Section
+                          </button>
+                        </div>
+                      </div>
+                      <textarea
+                        id="description"
+                        name="description"
+                        value={formData.description}
+                        onChange={handleInputChange}
+                        onKeyDown={(e) => {
+                          // Auto-add bullet point on Enter if current line starts with a bullet
+                          if (e.key === 'Enter') {
+                            const textarea = e.currentTarget;
+                            const cursorPos = textarea.selectionStart;
+                            const textBefore = formData.description.substring(0, cursorPos);
+                            const currentLineStart = textBefore.lastIndexOf('\n') + 1;
+                            const currentLine = textBefore.substring(currentLineStart);
+                            
+                            // Check if current line starts with a bullet point
+                            if (currentLine.match(/^[•\-\*]\s/)) {
+                              e.preventDefault();
+                              const textAfter = formData.description.substring(cursorPos);
+                              const bulletChar = currentLine.charAt(0);
+                              const newText = textBefore + '\n' + bulletChar + ' ' + textAfter;
+                              setFormData({ ...formData, description: newText });
+                              setTimeout(() => {
+                                textarea.selectionStart = textarea.selectionEnd = cursorPos + 3;
+                              }, 0);
+                            }
+                          }
+                        }}
+                        rows={12}
+                        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none"
+                        placeholder="Click '+ Bullet Point' or '+ Section' to get started, or type freely..."
+                      />
+                      <div className="flex items-start gap-2 mt-2">
+                        <svg className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                        </svg>
+                        <p className="text-xs text-gray-400">
+                          Press Enter after a bullet point to automatically add another. Use the buttons above to add sections and bullet points.
+                        </p>
+                      </div>
+                    </div>
+                  </StepperContent>
+                </Stepper>
+
+                {/* Error Message */}
+                {error && (
+                  <div className="bg-red-900/20 border border-red-500/50 rounded-lg p-4 text-red-400">
+                    <p className="text-sm">{error}</p>
+                  </div>
+                )}
+
+                {/* Navigation Buttons */}
+                <div className="flex items-center justify-between pt-4 border-t border-gray-700">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (currentStep > 1) {
+                        setCurrentStep(currentStep - 1);
+                      } else {
+                        setIsModalOpen(false);
+                        setCurrentStep(1);
+                      }
+                    }}
+                    className="px-6 py-3 border border-gray-700 rounded-lg text-gray-300 hover:bg-gray-800 transition-colors font-medium flex items-center gap-2"
+                    disabled={isSubmitting}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    {currentStep === 1 ? 'Cancel' : 'Previous'}
+                  </button>
+                  
+                  {currentStep < 4 ? (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setCurrentStep(currentStep + 1);
+                      }}
+                      className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+                    >
+                      Next
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  ) : (
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors flex items-center space-x-2"
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                          <span>{isEditMode ? 'Updating...' : 'Creating...'}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Check className="w-5 h-5" />
+                          <span>{isEditMode ? 'Update Job' : 'Create Job'}</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}
@@ -1010,9 +1244,7 @@ export default function JobListings() {
                       </svg>
                       Job Description
                     </h3>
-                    <p className="text-gray-300 leading-relaxed whitespace-pre-wrap">
-                      {selectedJob.description}
-                    </p>
+                    <FormattedDescription description={selectedJob.description} />
                   </div>
                 )}
 
