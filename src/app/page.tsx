@@ -10,6 +10,7 @@ import TextType from '@/components/text-type';
 import { useRipple, RippleEffect } from '@/components/ripple-effect';
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import { AnimatedCounter, AnimatedProgressBar, PulseStatusBadge } from '@/components/animated-counter';
+import { AuthModal } from '@/components/auth-modal';
 
 export default function Home() {
   const router = useRouter();
@@ -22,6 +23,7 @@ export default function Home() {
   const [userFirstName, setUserFirstName] = useState<string>('');
   const [isAnimationComplete, setIsAnimationComplete] = useState(false);
   const [headerAnimationComplete, setHeaderAnimationComplete] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   
   // Ripple effects for each card
   const candidatesRipple = useRipple();
@@ -218,7 +220,7 @@ export default function Home() {
               <p className="text-xl font-semibold text-emerald-400 mb-2">Log in to get started</p>
               <p className="text-gray-400 text-sm mb-6">Please log in to access your recruitment dashboard</p>
               <button
-                onClick={() => router.push('/login')}
+                onClick={() => setShowAuthModal(true)}
                 className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-semibold rounded-lg hover:from-emerald-600 hover:to-emerald-700 transition-all shadow-lg shadow-emerald-500/30"
               >
                 Go to Login
@@ -507,6 +509,17 @@ export default function Home() {
           ) : null}
         </div>
       </div>
+
+      {/* Auth Modal */}
+      <AuthModal 
+        isOpen={showAuthModal} 
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={() => {
+          setShowAuthModal(false);
+          // Refresh the page data after successful login
+          window.location.reload();
+        }}
+      />
     </DashboardLayout>
   );
 }

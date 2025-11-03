@@ -516,5 +516,28 @@ export const authApi = {
   // Listen to auth changes
   onAuthStateChange: (callback: (event: string, session: any) => void) => {
     return supabase.auth.onAuthStateChange(callback);
+  },
+
+  // Delete user account
+  deleteAccount: async () => {
+    const user = await authApi.getCurrentUser();
+    if (!user) throw new Error('No user logged in');
+
+    // Call the API route to delete the account (server-side)
+    const response = await fetch('/api/delete-account', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ userId: user.id }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to delete account');
+    }
+
+    // Sign out the user after successful deletion
+    await authApi.signOut();
   }
 };

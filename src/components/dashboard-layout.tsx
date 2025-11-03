@@ -125,7 +125,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     },
     {
       label: "Settings",
-      href: "#",
+      href: "/settings",
       icon: (
         <Settings className="text-neutral-200 h-5 w-5 flex-shrink-0" />
       ),
