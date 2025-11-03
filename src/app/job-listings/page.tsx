@@ -717,9 +717,42 @@ export default function JobListings() {
       </div>
 
       {/* Create/Edit Job Modal with Stepper */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
-          <div className="bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700 rounded-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex">
+      <AnimatePresence>
+        {isModalOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[60]"
+              onClick={() => {
+                setIsModalOpen(false);
+                setIsEditMode(false);
+                setEditingJobId(null);
+                setCurrentStep(1);
+                setFormData({
+                  title: '',
+                  department: '',
+                  location: '',
+                  description: '',
+                  requirements: '',
+                  status: 'draft'
+                });
+              }}
+            />
+            
+            {/* Modal Content */}
+            <div className="fixed inset-0 flex items-center justify-center z-[61] p-4 pointer-events-none">
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                transition={{ type: "spring", duration: 0.5, bounce: 0.3 }}
+                className="bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700 rounded-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex pointer-events-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
             {/* Left Side - Stepper Navigation */}
             <div className="w-64 bg-gray-900/50 border-r border-gray-700 p-6 flex flex-col">
               <div className="mb-8">
@@ -1084,9 +1117,11 @@ export default function JobListings() {
                 </div>
               </form>
             </div>
-          </div>
-        </div>
-      )}
+              </motion.div>
+            </div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Job Details Slide-in Panel */}
       <AnimatePresence>
@@ -1109,17 +1144,6 @@ export default function JobListings() {
               transition={{ type: 'spring', damping: 30, stiffness: 300 }}
               className="fixed right-0 top-0 h-full w-full md:w-[600px] bg-gradient-to-br from-gray-900 to-gray-800 border-l border-gray-700 z-50 overflow-y-auto"
             >
-              {/* Header */}
-              <div className="sticky top-0 bg-black border-b border-gray-800 px-8 py-6 flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-white">Job Details</h2>
-                <button
-                  onClick={() => setSelectedJob(null)}
-                  className="text-gray-400 hover:text-white transition-colors p-2 hover:bg-gray-800 rounded-lg"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-
               {/* Content */}
               <div className="p-8 space-y-6">
                 {/* Action Buttons - Icon Buttons */}
@@ -1180,6 +1204,19 @@ export default function JobListings() {
                     </button>
                     <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-gray-900 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none border border-red-900/30 shadow-lg">
                       Delete Job Listing
+                    </div>
+                  </div>
+
+                  {/* Close Button */}
+                  <div className="group relative">
+                    <button
+                      onClick={() => setSelectedJob(null)}
+                      className="w-14 h-14 flex items-center justify-center bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white rounded-full font-medium transition-all border border-gray-700 hover:scale-110"
+                    >
+                      <X className="w-6 h-6" />
+                    </button>
+                    <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-gray-900 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none border border-gray-700 shadow-lg">
+                      Close
                     </div>
                   </div>
                 </div>
@@ -1276,9 +1313,22 @@ export default function JobListings() {
       </AnimatePresence>
 
       {/* AI Analysis Progress Modal */}
-      {isAnalyzing && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-gradient-to-br from-gray-900/95 to-gray-800/95 backdrop-blur-xl border border-purple-500/30 rounded-2xl p-8 max-w-md w-full shadow-2xl">
+      <AnimatePresence>
+        {isAnalyzing && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                transition={{ type: "spring", duration: 0.5 }}
+                className="bg-gradient-to-br from-gray-900/95 to-gray-800/95 backdrop-blur-xl border border-purple-500/30 rounded-2xl p-8 max-w-md w-full shadow-2xl"
+              >
             <div className="space-y-6">
               <div className="flex flex-col items-center text-center">
                 <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4 relative">
@@ -1304,14 +1354,29 @@ export default function JobListings() {
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+              </motion.div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Upload Resumes Modal */}
-      {isUploadModalOpen && selectedJob && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700 rounded-2xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <AnimatePresence>
+        {isUploadModalOpen && selectedJob && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                transition={{ type: "spring", duration: 0.5 }}
+                className="bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700 rounded-2xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+              >
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h2 className="text-2xl font-bold text-white mb-1">Upload Candidate Resumes</h2>
@@ -1450,19 +1515,29 @@ export default function JobListings() {
                 <span>Analyze {uploadedFiles.length} Resume{uploadedFiles.length !== 1 ? 's' : ''}</span>
               </button>
             </div>
-          </div>
-        </div>
-      )}
+              </motion.div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Delete Confirmation Modal */}
-      {isDeleteModalOpen && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.9, opacity: 0 }}
-            className="bg-gradient-to-br from-gray-900 to-gray-800 border border-red-500/50 rounded-2xl p-8 max-w-md w-full"
-          >
+      <AnimatePresence>
+        {isDeleteModalOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                transition={{ type: "spring", duration: 0.5 }}
+                className="bg-gradient-to-br from-gray-900 to-gray-800 border border-red-500/50 rounded-2xl p-8 max-w-md w-full"
+              >
             <div className="flex items-center gap-4 mb-6">
               <div className="w-12 h-12 bg-red-500/20 rounded-full flex items-center justify-center flex-shrink-0">
                 <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1499,8 +1574,10 @@ export default function JobListings() {
               </button>
             </div>
           </motion.div>
-        </div>
-      )}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </DashboardLayout>
   );
 }
