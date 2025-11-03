@@ -167,7 +167,9 @@ export default function Home() {
         <header className="bg-transparent px-4 md:px-8 py-4 md:py-6">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-white mb-1">
-              {userFirstName ? (
+              {loading ? (
+                <span className="opacity-0">Loading...</span>
+              ) : userFirstName ? (
                 <TextType 
                   text={`Welcome back, ${userFirstName}!`}
                   speed={50}
@@ -188,7 +190,9 @@ export default function Home() {
               )}
             </h1>
             <p className="text-sm md:text-base text-gray-400">
-              {error === 'auth' ? (
+              {loading ? (
+                <span className="opacity-0">Loading...</span>
+              ) : error === 'auth' ? (
                 headerAnimationComplete ? (
                   <TextType 
                     text="Automate Resume Shortlisting with Clarity and Control."
