@@ -1,7 +1,7 @@
 # Organization Member Management Feature
 
 ## Overview
-The settings page now displays organization information and allows admins/owners to add members to their organization by username.
+The settings page now displays organization information and allows admins/owners to add members to their organization by email address.
 
 ## Features
 
@@ -21,59 +21,36 @@ The settings page now displays organization information and allows admins/owners
 - Displays member count
 - "Add Member" button (only for owners and admins)
 
-### 3. Add Member by Username
+### 3. Add Member by Email
 - Modal dialog for adding new members
-- Search users by username
+- Enter email address to invite users
 - Select role: Admin, Member, or Viewer
 - Permission checks:
   - Only owners and admins can add members
   - Prevents duplicate memberships
-  - Validates username exists
+  - Validates email format
+- Members are added as "pending" until they log in/sign up
 
 ## Database Requirements
 
-### SQL Function
-You need to add the following SQL function to your Supabase project:
+### No SQL Function Needed!
+The email-based approach uses the existing organization_members table directly. No additional SQL functions are required.
 
-```sql
--- Run this in your Supabase SQL Editor
-CREATE OR REPLACE FUNCTION find_user_by_username(search_username TEXT)
-RETURNS TABLE (
-  user_id UUID,
-  email TEXT,
-  username TEXT
-) 
-SECURITY DEFINER
-SET search_path = public
-LANGUAGE plpgsql
-AS $$
-BEGIN
-  RETURN QUERY
-  SELECT 
-    au.id as user_id,
-    au.email,
-    au.raw_user_meta_data->>'username' as username
-  FROM auth.users au
-  WHERE LOWER(au.raw_user_meta_data->>'username') = LOWER(search_username)
-  LIMIT 1;
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION find_user_by_username(TEXT) TO authenticated;
-```
-
-This function is stored in: `supabase-username-lookup.sql`
+The organization_members table already supports:
+- `user_email` field for storing email addresses
+- `status` field for tracking 'pending' and 'active' members
+- `invited_at` field for tracking when invites were sent
 
 ## API Endpoint
 
 ### POST `/api/organization/add-member`
 
-Adds a user to an organization by username.
+Adds a user to an organization by email address.
 
 **Request Body:**
 ```json
 {
-  "username": "john_doe",
+  "email": "john@example.com",
   "role": "member",
   "organizationId": "uuid"
 }
@@ -86,34 +63,20 @@ Adds a user to an organization by username.
   "member": {
     "id": "uuid",
     "organization_id": "uuid",
-    "user_id": "uuid",
+    "user_id": "",
     "user_email": "john@example.com",
     "role": "member",
-    "status": "active"
+    "status": "pending"
   },
-  "message": "Successfully added john_doe to the organization"
+  "message": "Successfully invited john@example.com to the organization"
 }
 ```
 
 **Error Responses:**
-- 400: Missing required fields or user already member
+- 400: Missing required fields, invalid email format, or user already member
 - 401: Unauthorized (not logged in)
 - 403: Insufficient permissions (not owner/admin)
-- 404: User not found
 - 500: Server error
-
-## Permissions
-
-### Role Hierarchy
-1. **Owner** - Full control, can add/remove members, change roles
-2. **Admin** - Can add members (except owners), manage content
-3. **Member** - View only in settings
-4. **Viewer** - View only in settings
-
-### Access Control
-- Only owners and admins can see the "Add Member" button
-- Only owners and admins can add new members
-- Current user's role is indicated with "(You)" label
 
 ## User Flow
 
@@ -121,28 +84,28 @@ Adds a user to an organization by username.
 2. Organization information is displayed automatically
 3. Team members section shows all current members
 4. Owner/Admin clicks "Add Member" button
-5. Modal appears with username input and role selector
-6. User enters target username (without @ symbol)
-7. Selects appropriate role
-8. Clicks "Add Member"
-9. System validates:
-   - Username exists in the system
-   - User is not already a member
+5. Modal appears with email input and role selector
+6. User enters target email address
+7. System validates email format
+8. Selects appropriate role
+9. Clicks "Add Member"
+10. System validates:
+   - Email format is valid
+   - Email is not already a member
    - Current user has permission
-10. Member is added and list refreshes
+11. Member is added as "pending" and list refreshes
+12. Invited user will become "active" when they log in/sign up with that email
 
 ## Technical Details
 
 ### Files Modified/Created
 - `src/app/settings/page.tsx` - Main settings page with org display and member management
-- `src/app/api/organization/add-member/route.ts` - API endpoint for adding members
-- `supabase-username-lookup.sql` - SQL function for finding users by username
+- `src/app/api/organization/add-member/route.ts` - API endpoint for adding members by email
 
 ### Key Functions
 - `organizationsApi.getUserOrganizations()` - Get user's organizations
 - `organizationMembersApi.getMembers()` - Get organization members
-- `organizationMembersApi.isMember()` - Check if user is member
-- `find_user_by_username()` - RPC function to find users
+- Direct Supabase queries for checking membership and adding members
 
 ### State Management
 ```typescript
@@ -150,14 +113,14 @@ const [organization, setOrganization] = useState<Organization | null>(null);
 const [members, setMembers] = useState<OrganizationMember[]>([]);
 const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
 const [showAddMemberModal, setShowAddMemberModal] = useState(false);
-const [newMemberUsername, setNewMemberUsername] = useState('');
+const [newMemberEmail, setNewMemberEmail] = useState('');
 const [newMemberRole, setNewMemberRole] = useState<'admin' | 'member' | 'viewer'>('member');
 ```
 
 ## Error Handling
 
 The system handles various error cases:
-- User not found by username
+- Invalid email format
 - Duplicate membership attempts
 - Permission denied
 - Network errors
@@ -193,34 +156,30 @@ Potential improvements:
 ## Testing
 
 To test the feature:
-1. Ensure you have the SQL function installed in Supabase
-2. Create test users with usernames during signup
-3. Log in as an organization owner/admin
-4. Navigate to Settings
-5. Try adding a member by their username
-6. Verify the member appears in the list
-7. Test with non-existent usernames (should show error)
-8. Test with duplicate usernames (should show error)
-9. Test as a regular member (should not see "Add Member" button)
+1. No SQL function installation needed!
+2. Log in as an organization owner/admin
+3. Navigate to Settings → Team tab
+4. Try adding a member by their email address
+5. Verify the member appears in the list with "pending" status
+6. Test with invalid email formats (should show error)
+7. Test with duplicate emails (should show error)
+8. Test as a regular member (should not see "Add Member" button)
 
 ## Troubleshooting
 
-### "User not found" error
-- Ensure the target user has completed signup with a username
-- Username is case-insensitive but must match exactly
-- User must exist in auth.users table
+### "Invalid email format" error
+- Ensure email follows standard format: user@domain.com
+- No spaces or special characters outside of @ and .
 
-### "Failed to add member" error
-- Check Supabase logs for detailed error
-- Verify RPC function is installed correctly
-- Check organization_members table permissions
+### "User already a member" error
+- Check if the email is already in the members list
+- Email comparison is case-insensitive
 
 ### Button not appearing
 - Verify current user's role in organization
 - Check if organization data loaded correctly
 - Ensure user is logged in
 
-### SQL function not working
-- Run the SQL in Supabase SQL Editor
-- Grant permissions to authenticated role
-- Test function manually: `SELECT * FROM find_user_by_username('testuser')`
+### Member stays "pending"
+- Member will remain pending until they log in/sign up with that exact email
+- This is normal behavior for email-based invitations

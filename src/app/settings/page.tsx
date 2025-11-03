@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/dashboard-layout';
 import { authApi, organizationsApi, organizationMembersApi, Organization, OrganizationMember } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
-import { Trash2, AlertTriangle, User, Mail, Shield, Settings as SettingsIcon, Building2, Users, UserPlus, Crown, ShieldCheck } from 'lucide-react';
+import { Trash2, AlertTriangle, User, Mail, Shield, Settings as SettingsIcon, Building2, Users, UserPlus, Crown, ShieldCheck, MoreVertical, Edit, UserMinus } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 type TabType = 'account' | 'organization' | 'team';
@@ -23,11 +23,20 @@ export default function SettingsPage() {
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [members, setMembers] = useState<OrganizationMember[]>([]);
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
-  const [newMemberUsername, setNewMemberUsername] = useState('');
+  const [newMemberEmail, setNewMemberEmail] = useState('');
   const [newMemberRole, setNewMemberRole] = useState<'admin' | 'member' | 'viewer'>('member');
   const [addMemberError, setAddMemberError] = useState<string | null>(null);
   const [isAddingMember, setIsAddingMember] = useState(false);
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+  
+  // Manage member state
+  const [selectedMember, setSelectedMember] = useState<OrganizationMember | null>(null);
+  const [showManageModal, setShowManageModal] = useState(false);
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [manageMemberError, setManageMemberError] = useState<string | null>(null);
+  const [isUpdatingMember, setIsUpdatingMember] = useState(false);
+  const [isDeletingMember, setIsDeletingMember] = useState(false);
+  const [newRole, setNewRole] = useState<'owner' | 'admin' | 'member' | 'viewer'>('member');
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -86,8 +95,15 @@ export default function SettingsPage() {
   };
 
   const handleAddMember = async () => {
-    if (!newMemberUsername.trim()) {
-      setAddMemberError('Please enter a username');
+    if (!newMemberEmail.trim()) {
+      setAddMemberError('Please enter an email address');
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newMemberEmail.trim())) {
+      setAddMemberError('Please enter a valid email address');
       return;
     }
 
@@ -100,13 +116,21 @@ export default function SettingsPage() {
     setAddMemberError(null);
 
     try {
+      // Get the current session to send auth token
+      const session = await authApi.getSession();
+      
+      if (!session) {
+        throw new Error('No active session. Please log in again.');
+      }
+
       const response = await fetch('/api/organization/add-member', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
-          username: newMemberUsername.trim(),
+          email: newMemberEmail.trim(),
           role: newMemberRole,
           organizationId: organization.id,
         }),
@@ -124,7 +148,7 @@ export default function SettingsPage() {
       
       // Close modal and reset form
       setShowAddMemberModal(false);
-      setNewMemberUsername('');
+      setNewMemberEmail('');
       setNewMemberRole('member');
     } catch (error: any) {
       console.error('Error adding member:', error);
@@ -161,6 +185,107 @@ export default function SettingsPage() {
         return 'bg-gray-500/20 text-gray-400 border-gray-500/50';
       default:
         return 'bg-gray-500/20 text-gray-400 border-gray-500/50';
+    }
+  };
+
+  const handleManageMember = (member: OrganizationMember) => {
+    setSelectedMember(member);
+    setNewRole(member.role as any);
+    setShowManageModal(true);
+    setManageMemberError(null);
+  };
+
+  const handleUpdateRole = async () => {
+    if (!selectedMember || !organization) return;
+
+    setIsUpdatingMember(true);
+    setManageMemberError(null);
+
+    try {
+      const session = await authApi.getSession();
+      
+      if (!session) {
+        throw new Error('No active session. Please log in again.');
+      }
+
+      const response = await fetch('/api/organization/update-member', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          memberId: selectedMember.id,
+          role: newRole,
+          organizationId: organization.id,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update member role');
+      }
+
+      // Refresh members list
+      const orgMembers = await organizationMembersApi.getMembers(organization.id);
+      setMembers(orgMembers);
+      
+      // Close modal
+      setShowManageModal(false);
+      setSelectedMember(null);
+    } catch (error: any) {
+      console.error('Error updating member:', error);
+      setManageMemberError(error.message || 'Failed to update member. Please try again.');
+    } finally {
+      setIsUpdatingMember(false);
+    }
+  };
+
+  const handleDeleteMember = async () => {
+    if (!selectedMember || !organization) return;
+
+    setIsDeletingMember(true);
+    setManageMemberError(null);
+
+    try {
+      const session = await authApi.getSession();
+      
+      if (!session) {
+        throw new Error('No active session. Please log in again.');
+      }
+
+      const response = await fetch('/api/organization/delete-member', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          memberId: selectedMember.id,
+          organizationId: organization.id,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to remove member');
+      }
+
+      // Refresh members list
+      const orgMembers = await organizationMembersApi.getMembers(organization.id);
+      setMembers(orgMembers);
+      
+      // Close modals
+      setShowDeleteConfirmModal(false);
+      setShowManageModal(false);
+      setSelectedMember(null);
+    } catch (error: any) {
+      console.error('Error deleting member:', error);
+      setManageMemberError(error.message || 'Failed to remove member. Please try again.');
+    } finally {
+      setIsDeletingMember(false);
     }
   };
 
@@ -469,17 +594,31 @@ export default function SettingsPage() {
                           {member.user_id === user?.id && (
                             <span className="text-xs text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full">(You)</span>
                           )}
+                          {member.status === 'pending' && (
+                            <span className="text-xs text-orange-400 bg-orange-400/10 px-2 py-0.5 rounded-full">Pending</span>
+                          )}
                         </div>
                         <div className="text-xs text-gray-400">
                           Joined {new Date(member.joined_at || member.created_at).toLocaleDateString()}
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {getRoleIcon(member.role)}
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getRoleBadgeColor(member.role)}`}>
-                        {member.role.charAt(0).toUpperCase() + member.role.slice(1)}
-                      </span>
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
+                        {getRoleIcon(member.role)}
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getRoleBadgeColor(member.role)}`}>
+                          {member.role.charAt(0).toUpperCase() + member.role.slice(1)}
+                        </span>
+                      </div>
+                      {(currentUserRole === 'owner' || currentUserRole === 'admin') && member.user_id !== user?.id && (
+                        <button
+                          onClick={() => handleManageMember(member)}
+                          className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+                          title="Manage member"
+                        >
+                          <MoreVertical className="w-4 h-4 text-gray-400" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -578,23 +717,23 @@ export default function SettingsPage() {
             </div>
 
             <p className="text-gray-300 mb-4">
-              Add a user to your organization by their username.
+              Add a user to your organization by their email address.
             </p>
 
             <div className="space-y-4 mb-4">
               <div>
                 <label className="text-sm text-gray-400 block mb-2">
-                  Username
+                  Email Address
                 </label>
                 <input
-                  type="text"
-                  value={newMemberUsername}
+                  type="email"
+                  value={newMemberEmail}
                   onChange={(e) => {
-                    setNewMemberUsername(e.target.value);
+                    setNewMemberEmail(e.target.value);
                     setAddMemberError(null);
                   }}
                   className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-emerald-500"
-                  placeholder="Enter username (e.g., john_doe)"
+                  placeholder="Enter email (e.g., john@example.com)"
                   autoFocus
                 />
               </div>
@@ -625,7 +764,7 @@ export default function SettingsPage() {
               <button
                 onClick={() => {
                   setShowAddMemberModal(false);
-                  setNewMemberUsername('');
+                  setNewMemberEmail('');
                   setNewMemberRole('member');
                   setAddMemberError(null);
                 }}
@@ -636,7 +775,7 @@ export default function SettingsPage() {
               </button>
               <button
                 onClick={handleAddMember}
-                disabled={isAddingMember || !newMemberUsername.trim()}
+                disabled={isAddingMember || !newMemberEmail.trim()}
                 className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {isAddingMember ? (
@@ -648,6 +787,167 @@ export default function SettingsPage() {
                   <>
                     <UserPlus className="w-4 h-4" />
                     Add Member
+                  </>
+                )}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Manage Member Modal */}
+      {showManageModal && selectedMember && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-gray-900 border border-purple-500/50 rounded-2xl p-6 max-w-md w-full"
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 bg-purple-500/20 rounded-full flex items-center justify-center">
+                <Edit className="w-6 h-6 text-purple-400" />
+              </div>
+              <h2 className="text-xl font-bold text-white">Manage Team Member</h2>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-gray-300 mb-2">Managing:</p>
+              <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg px-4 py-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <Mail className="w-4 h-4 text-gray-400" />
+                  <span className="text-white font-medium">{selectedMember.user_email}</span>
+                </div>
+                <div className="text-xs text-gray-400">
+                  Current role: {selectedMember.role.charAt(0).toUpperCase() + selectedMember.role.slice(1)}
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4 mb-4">
+              <div>
+                <label className="text-sm text-gray-400 block mb-2">
+                  Change Role
+                </label>
+                <select
+                  value={newRole}
+                  onChange={(e) => setNewRole(e.target.value as any)}
+                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                >
+                  {currentUserRole === 'owner' && <option value="owner">Owner - Full control</option>}
+                  <option value="admin">Admin - Full access except ownership</option>
+                  <option value="member">Member - Can view and edit</option>
+                  <option value="viewer">Viewer - Read-only access</option>
+                </select>
+              </div>
+
+              {manageMemberError && (
+                <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-3">
+                  <p className="text-sm text-red-400">{manageMemberError}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3 mb-4">
+              <button
+                onClick={() => {
+                  setShowManageModal(false);
+                  setSelectedMember(null);
+                  setManageMemberError(null);
+                }}
+                disabled={isUpdatingMember}
+                className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdateRole}
+                disabled={isUpdatingMember || newRole === selectedMember.role}
+                className="flex-1 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isUpdatingMember ? (
+                  <>
+                    <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Updating...
+                  </>
+                ) : (
+                  <>
+                    <Edit className="w-4 h-4" />
+                    Update Role
+                  </>
+                )}
+              </button>
+            </div>
+
+            <div className="pt-4 border-t border-gray-700">
+              <button
+                onClick={() => setShowDeleteConfirmModal(true)}
+                disabled={isUpdatingMember}
+                className="w-full px-4 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 border border-red-500/50"
+              >
+                <UserMinus className="w-4 h-4" />
+                Remove from Organization
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Delete Member Confirmation Modal */}
+      {showDeleteConfirmModal && selectedMember && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-gray-900 border border-red-500/50 rounded-2xl p-6 max-w-md w-full"
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 bg-red-500/20 rounded-full flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6 text-red-400" />
+              </div>
+              <h2 className="text-xl font-bold text-white">Remove Member?</h2>
+            </div>
+
+            <p className="text-gray-300 mb-4">
+              Are you sure you want to remove <span className="font-semibold text-white">{selectedMember.user_email}</span> from the organization?
+            </p>
+
+            <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-3 mb-4">
+              <p className="text-sm text-red-300">
+                This action cannot be undone. The member will lose access to all organization resources.
+              </p>
+            </div>
+
+            {manageMemberError && (
+              <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-3 mb-4">
+                <p className="text-sm text-red-400">{manageMemberError}</p>
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowDeleteConfirmModal(false);
+                  setManageMemberError(null);
+                }}
+                disabled={isDeletingMember}
+                className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteMember}
+                disabled={isDeletingMember}
+                className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isDeletingMember ? (
+                  <>
+                    <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Removing...
+                  </>
+                ) : (
+                  <>
+                    <UserMinus className="w-4 h-4" />
+                    Remove Member
                   </>
                 )}
               </button>

@@ -1,45 +1,75 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createClient } from '@supabase/supabase-js';
 
 export async function POST(request: NextRequest) {
   try {
-    const { username, role, organizationId } = await request.json();
+    const { email, role, organizationId } = await request.json();
 
-    console.log('[ADD MEMBER] Request received:', { username, role, organizationId });
+    console.log('[ADD MEMBER] Request received:', { email, role, organizationId });
 
     // Validate inputs
-    if (!username || !role || !organizationId) {
+    if (!email || !role || !organizationId) {
       return NextResponse.json(
-        { error: 'Username, role, and organization ID are required' },
+        { error: 'Email, role, and organization ID are required' },
         { status: 400 }
       );
     }
 
-    // Create Supabase client for API route
-    const supabase = createRouteHandlerClient({ cookies });
-
-    console.log('[ADD MEMBER] Getting current session...');
-
-    // Get current session (more reliable than getUser in API routes)
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    
-    console.log('[ADD MEMBER] Session result:', { 
-      hasSession: !!session,
-      user: session?.user ? { id: session.user.id, email: session.user.email } : null,
-      error: sessionError 
-    });
-
-    if (sessionError || !session || !session.user) {
-      console.error('[ADD MEMBER] Session error:', sessionError);
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
       return NextResponse.json(
-        { error: 'Unauthorized - Please log in again' },
+        { error: 'Invalid email format' },
+        { status: 400 }
+      );
+    }
+
+    console.log('[ADD MEMBER] Getting auth token from Authorization header...');
+
+    // Get the Authorization header from the request
+    const authHeader = request.headers.get('authorization');
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.error('[ADD MEMBER] No Authorization header found');
+      return NextResponse.json(
+        { error: 'Unauthorized - No authentication token provided' },
         { status: 401 }
       );
     }
 
-    const user = session.user;
-    console.log('[ADD MEMBER] Checking if user is organization member...');
+    const token = authHeader.replace('Bearer ', '');
+    console.log('[ADD MEMBER] Token found, creating Supabase client...');
+
+    // Create Supabase client with the access token
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      }
+    );
+
+    console.log('[ADD MEMBER] Getting current user...');
+
+    // Get current user
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    console.log('[ADD MEMBER] User result:', { 
+      user: user ? { id: user.id, email: user.email } : null,
+      error: authError 
+    });
+
+    if (authError || !user) {
+      console.error('[ADD MEMBER] Auth error:', authError);
+      return NextResponse.json(
+        { error: 'Unauthorized - Invalid or expired token' },
+        { status: 401 }
+      );
+    }
 
     // Check if current user is a member of the organization
     const { data: currentMember, error: memberError } = await supabase
@@ -66,70 +96,59 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Find user by username from auth.users metadata
-    // Note: Supabase doesn't allow direct querying of auth.users, so we need to:
-    // 1. Get all organization members to check their usernames
-    // 2. Or maintain a separate users table with username -> user_id mapping
-    // For now, we'll use the RPC approach to search users
-    
-    // Call a Supabase RPC function to find user by username
-    const { data: userInfo, error: userError } = await supabase.rpc('find_user_by_username', {
-      search_username: username.toLowerCase().replace('@', '')
-    });
+    console.log('[ADD MEMBER] Looking up user by email...');
 
-    if (userError || !userInfo || userInfo.length === 0) {
-      return NextResponse.json(
-        { error: 'User not found. Please check the username.' },
-        { status: 404 }
-      );
-    }
-
-    const targetUserId = userInfo[0].user_id;
-    const targetUserEmail = userInfo[0].email;
-
-    // Check if user is already a member
-    const { data: existingMember } = await supabase
+    // Use Supabase service role to query users by email
+    // First, try to find if user already exists in our org members table
+    const { data: existingByEmail } = await supabase
       .from('organization_members')
       .select('*')
       .eq('organization_id', organizationId)
-      .eq('user_id', targetUserId)
-      .eq('status', 'active')
+      .eq('user_email', email.toLowerCase())
       .single();
 
-    if (existingMember) {
+    if (existingByEmail) {
       return NextResponse.json(
-        { error: 'User is already a member of this organization' },
+        { error: 'This email is already a member of this organization' },
         { status: 400 }
       );
     }
 
-    // Add the member
+    // Since we can't easily query auth.users from client, we'll create the member
+    // with the email and let them be "pending" until they sign up
+    // Or if they already have an account, they need to use the exact email
+    
+    console.log('[ADD MEMBER] Creating member record with email...');
+
+    // Add the member (user_id will be empty for invited users)
     const { data: newMember, error: addError } = await supabase
       .from('organization_members')
       .insert([{
         organization_id: organizationId,
-        user_id: targetUserId,
-        user_email: targetUserEmail,
+        user_id: '', // Will be filled when user signs up/logs in
+        user_email: email.toLowerCase(),
         role: role,
         invited_by: user.id,
-        status: 'active',
-        joined_at: new Date().toISOString(),
+        status: 'pending', // Set as pending until user accepts
+        invited_at: new Date().toISOString(),
       }])
       .select()
       .single();
 
     if (addError) {
-      console.error('Error adding member:', addError);
+      console.error('[ADD MEMBER] Error adding member:', addError);
       return NextResponse.json(
         { error: 'Failed to add member to organization' },
         { status: 500 }
       );
     }
 
+    console.log('[ADD MEMBER] Member added successfully:', newMember);
+
     return NextResponse.json({
       success: true,
       member: newMember,
-      message: `Successfully added ${username} to the organization`
+      message: `Successfully invited ${email} to the organization`
     });
 
   } catch (error: any) {
