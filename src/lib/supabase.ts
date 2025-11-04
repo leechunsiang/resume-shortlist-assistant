@@ -7,7 +7,15 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables. Please check your .env file.');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    storageKey: 'supabase.auth.token',
+    storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+  },
+});
 
 // Database types for TypeScript
 export interface Organization {
@@ -531,11 +539,23 @@ export const dashboardApi = {
 
 // Authentication helper functions
 export const authApi = {
-  // Get current user
+  // Get current user - tries session first, then makes API call
   getCurrentUser: async () => {
-    const { data: { user }, error } = await supabase.auth.getUser();
-    if (error) throw error;
-    return user;
+    try {
+      // First check if we have a session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        return session.user;
+      }
+      
+      // If no session, try getUser which makes an API call
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error) throw error;
+      return user;
+    } catch (error) {
+      console.error('[AUTH] Error getting current user:', error);
+      return null;
+    }
   },
 
   // Get current session

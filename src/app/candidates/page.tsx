@@ -84,24 +84,21 @@ export default function CandidatesPage() {
     async function fetchCandidates() {
       // Wait for organization context to load
       if (orgLoading) {
+        console.log('[CANDIDATES] Waiting for organization context...');
         return;
       }
 
-      // Check authentication
-      try {
-        const user = await authApi.getCurrentUser();
-        if (!user) {
-          router.push('/login');
-          return;
-        }
-      } catch (authError) {
-        console.log('User not authenticated');
+      // Check if user is authenticated
+      const user = await authApi.getCurrentUser();
+      if (!user) {
+        console.log('[CANDIDATES] No user found, redirecting to login');
         router.push('/login');
         return;
       }
 
       // Check if organization is selected
       if (!currentOrganization) {
+        console.log('[CANDIDATES] No organization selected, redirecting to setup');
         router.push('/organization/setup');
         return;
       }
@@ -135,14 +132,14 @@ export default function CandidatesPage() {
           .order('created_at', { ascending: false });
 
         if (candidatesError) {
-          console.error('Error fetching candidates:', candidatesError);
+          console.error('[CANDIDATES] Error fetching candidates:', candidatesError);
           throw candidatesError;
         }
 
         console.log('[CANDIDATES] Fetched', candidatesData?.length || 0, 'candidates');
         setCandidates(candidatesData || []);
       } catch (err) {
-        console.error('Error fetching candidates:', err);
+        console.error('[CANDIDATES] Error fetching candidates:', err);
         setError('Failed to connect to database. Please check your Supabase configuration.');
       } finally {
         setLoading(false);
@@ -235,6 +232,16 @@ export default function CandidatesPage() {
 
   return (
     <DashboardLayout>
+      {/* Show loading state while organization context is loading */}
+      {orgLoading ? (
+        <div className="flex-1 flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
+            <p className="text-gray-400">Loading organization...</p>
+          </div>
+        </div>
+      ) : (
+        <>
       <div className="flex-1 overflow-auto">
         {/* Header */}
         <header className="bg-transparent px-8 py-6">
@@ -920,6 +927,8 @@ export default function CandidatesPage() {
           </>
         )}
       </AnimatePresence>
+        </>
+      )}
     </DashboardLayout>
   );
 }

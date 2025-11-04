@@ -101,25 +101,22 @@ export default function JobListings() {
     async function fetchData() {
       // Wait for organization context to load
       if (orgLoading) {
+        console.log('[JOB LISTINGS] Waiting for organization context...');
         return;
       }
 
-      // Check authentication
-      try {
-        const user = await authApi.getCurrentUser();
-        if (!user) {
-          router.push('/login');
-          return;
-        }
-        setUserId(user.id);
-      } catch (authError) {
-        console.log('User not authenticated');
+      // Check if user is authenticated
+      const user = await authApi.getCurrentUser();
+      if (!user) {
+        console.log('[JOB LISTINGS] No user found, redirecting to login');
         router.push('/login');
         return;
       }
+      setUserId(user.id);
 
       // Check if organization is selected
       if (!currentOrganization) {
+        console.log('[JOB LISTINGS] No organization selected, redirecting to setup');
         router.push('/organization/setup');
         return;
       }
@@ -141,7 +138,7 @@ export default function JobListings() {
         setJobs(jobsData);
         setTotalCandidates(candidatesData.length);
       } catch (err) {
-        console.error('Error fetching data:', err);
+        console.error('[JOB LISTINGS] Error fetching data:', err);
         setError('Failed to connect to database. Please check your Supabase configuration.');
       } finally {
         setLoading(false);
@@ -447,6 +444,16 @@ export default function JobListings() {
 
   return (
     <DashboardLayout>
+      {/* Show loading state while organization context is loading */}
+      {orgLoading ? (
+        <div className="flex-1 flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
+            <p className="text-gray-400">Loading organization...</p>
+          </div>
+        </div>
+      ) : (
+        <>
       {/* Main Content */}
       <div className="flex-1 overflow-auto">
         {/* Header */}
@@ -1647,6 +1654,8 @@ export default function JobListings() {
           </>
         )}
       </AnimatePresence>
+        </>
+      )}
     </DashboardLayout>
   );
 }
