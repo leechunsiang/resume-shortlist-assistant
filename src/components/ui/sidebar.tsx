@@ -207,9 +207,10 @@ export const SidebarLink = ({
     <Link
       href={link.href}
       className={cn(
-        "flex items-center justify-start gap-3 group/sidebar py-2.5 px-2 rounded-lg transition-colors",
+        "flex items-center group/sidebar py-2.5 px-2 rounded-lg transition-colors",
+        open ? "justify-start" : "justify-center",
         isActive 
-          ? "bg-emerald-500/20 border border-emerald-500/50" 
+          ? "bg-white/10 border border-white/30" 
           : "hover:bg-gray-800",
         className
       )}
@@ -219,16 +220,16 @@ export const SidebarLink = ({
       <motion.span
         initial={false}
         animate={{
-          width: animate ? (open ? "auto" : 0) : "auto",
           opacity: animate ? (open ? 1 : 0) : 1,
         }}
         transition={{
-          duration: 0.2,
-          ease: [0.4, 0, 0.2, 1],
+          duration: 0.3,
+          ease: "easeInOut",
         }}
         className={cn(
-          "text-sm font-medium whitespace-nowrap overflow-hidden transition-colors",
-          isActive ? "text-emerald-400" : "text-gray-300 group-hover/sidebar:text-white"
+          "text-sm font-medium whitespace-nowrap ml-3",
+          !open && "hidden",
+          isActive ? "text-white" : "text-gray-300 group-hover/sidebar:text-white"
         )}
       >
         {link.label}

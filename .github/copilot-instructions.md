@@ -16,6 +16,7 @@ Building a resume shortlist assistant web app using Next.js, React, Supabase, sh
 - [x] Two-step signup form
 - [x] User profile display (first name, last name, username)
 - [x] Google Gemini AI integration for resume shortlisting
+- [x] Role-Based Access Control (RBAC) system
 - [ ] Install and configure shadcn/ui (optional - for future enhancements)
 - [x] Documentation complete
 
@@ -48,6 +49,15 @@ Building a resume shortlist assistant web app using Next.js, React, Supabase, sh
 - ✅ Automatic membership activation
 - ✅ LocalStorage persistence for selected organization
 
+### Role-Based Access Control (RBAC)
+- ✅ Four-tier role system (Owner, Admin, Member, Viewer)
+- ✅ Granular permissions for each role
+- ✅ Permission matrix visualization
+- ✅ Frontend permission hooks (usePermissions, useRole)
+- ✅ Backend permission checks (requirePermission, requireRole)
+- ✅ Role-based UI rendering
+- ✅ Comprehensive documentation
+
 ### AI Features
 - ✅ Google Gemini AI integration
 - ✅ Automatic resume shortlisting
@@ -61,6 +71,14 @@ Building a resume shortlist assistant web app using Next.js, React, Supabase, sh
 - ✅ Data sanitization and error handling
 
 ## Key Files
+
+### RBAC Implementation
+- `src/lib/rbac.ts` - RBAC utility functions and hooks
+- `src/components/rbac-matrix.tsx` - Visual permission matrix component
+- `src/components/rbac-examples.tsx` - Example implementations
+- `RBAC_IMPLEMENTATION.md` - Complete RBAC documentation
+- `RBAC_QUICK_REFERENCE.md` - Quick reference for developers
+- `rbac-audit-migration.sql` - Database migration for RBAC
 
 ### Organization Management
 - `src/contexts/organization-context.tsx` - Global organization state

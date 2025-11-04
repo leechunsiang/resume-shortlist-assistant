@@ -242,3 +242,229 @@ export async function requirePermission(
 
   return { authorized: true };
 }
+
+/**
+ * Get user's organization role (owner, admin, member, viewer)
+ */
+export async function getOrganizationRole(
+  userId: string,
+  organizationId: string
+): Promise<string | null> {
+  try {
+    const { data, error } = await supabase
+      .from('organization_members')
+      .select('role')
+      .eq('user_id', userId)
+      .eq('organization_id', organizationId)
+      .eq('status', 'active')
+      .single();
+
+    if (error || !data) return null;
+
+    return data.role;
+  } catch (err) {
+    console.error('Failed to get organization role:', err);
+    return null;
+  }
+}
+
+/**
+ * Check if user has a specific organization role
+ */
+export async function hasOrganizationRole(
+  userId: string,
+  organizationId: string,
+  roles: string | string[]
+): Promise<boolean> {
+  try {
+    const userRole = await getOrganizationRole(userId, organizationId);
+    if (!userRole) return false;
+
+    const roleArray = Array.isArray(roles) ? roles : [roles];
+    return roleArray.includes(userRole);
+  } catch (err) {
+    console.error('Role check failed:', err);
+    return false;
+  }
+}
+
+/**
+ * Require specific organization role (for API routes)
+ */
+export async function requireRole(
+  userId: string,
+  organizationId: string,
+  roles: string | string[]
+): Promise<{ authorized: boolean; error?: string; role?: string }> {
+  const userRole = await getOrganizationRole(userId, organizationId);
+
+  if (!userRole) {
+    return {
+      authorized: false,
+      error: 'User is not a member of this organization',
+    };
+  }
+
+  const roleArray = Array.isArray(roles) ? roles : [roles];
+  const authorized = roleArray.includes(userRole);
+
+  if (!authorized) {
+    return {
+      authorized: false,
+      error: `This action requires one of the following roles: ${roleArray.join(', ')}`,
+      role: userRole,
+    };
+  }
+
+  return { authorized: true, role: userRole };
+}
+
+/**
+ * Get permissions map for a role based on organization role
+ */
+export function getOrganizationRolePermissions(role: string): string[] {
+  const permissionsMap: Record<string, string[]> = {
+    owner: [
+      // All permissions
+      'jobs.create', 'jobs.read', 'jobs.update', 'jobs.delete', 'jobs.export',
+      'candidates.create', 'candidates.read', 'candidates.update', 'candidates.delete', 'candidates.export',
+      'users.manage', 'settings.manage', 'audit.view', 'ai.shortlist',
+      'organization.delete', 'organization.transfer',
+    ],
+    admin: [
+      // All except organization transfer/delete
+      'jobs.create', 'jobs.read', 'jobs.update', 'jobs.delete', 'jobs.export',
+      'candidates.create', 'candidates.read', 'candidates.update', 'candidates.delete', 'candidates.export',
+      'users.manage', 'settings.manage', 'audit.view', 'ai.shortlist',
+    ],
+    member: [
+      // Standard CRUD for jobs and candidates
+      'jobs.create', 'jobs.read', 'jobs.update', 'jobs.delete', 'jobs.export',
+      'candidates.create', 'candidates.read', 'candidates.update', 'candidates.delete', 'candidates.export',
+      'ai.shortlist',
+    ],
+    viewer: [
+      // Read-only
+      'jobs.read', 'candidates.read',
+    ],
+  };
+
+  return permissionsMap[role] || [];
+}
+
+/**
+ * Check permission based on organization role
+ */
+export async function checkRolePermission(
+  userId: string,
+  organizationId: string,
+  permission: string
+): Promise<boolean> {
+  try {
+    const userRole = await getOrganizationRole(userId, organizationId);
+    if (!userRole) return false;
+
+    const permissions = getOrganizationRolePermissions(userRole);
+    return permissions.includes(permission);
+  } catch (err) {
+    console.error('Permission check failed:', err);
+    return false;
+  }
+}
+
+/**
+ * React hook for role-based checks
+ */
+export function useRole(organizationId?: string) {
+  const checkRole = async (roles: string | string[]): Promise<boolean> => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return false;
+
+      let orgId = organizationId;
+      if (!orgId) {
+        // Get from localStorage or first organization
+        const stored = localStorage.getItem('selectedOrganizationId');
+        if (stored) {
+          orgId = stored;
+        } else {
+          const { data: orgs } = await supabase
+            .from('organization_members')
+            .select('organization_id')
+            .eq('user_id', user.id)
+            .eq('status', 'active')
+            .limit(1)
+            .single();
+
+          if (!orgs) return false;
+          orgId = orgs.organization_id;
+        }
+      }
+
+      if (!orgId) return false;
+
+      return hasOrganizationRole(user.id, orgId, roles);
+    } catch (err) {
+      console.error('Role check failed:', err);
+      return false;
+    }
+  };
+
+  const isOwner = () => checkRole('owner');
+  const isAdmin = () => checkRole('admin');
+  const isMember = () => checkRole('member');
+  const isViewer = () => checkRole('viewer');
+  const hasRole = (roles: string | string[]) => checkRole(roles);
+
+  return { isOwner, isAdmin, isMember, isViewer, hasRole, checkRole };
+}
+
+/**
+ * React hook for permission checks based on organization role
+ */
+export function usePermissions(organizationId?: string) {
+  const can = async (permission: string): Promise<boolean> => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return false;
+
+      let orgId = organizationId;
+      if (!orgId) {
+        const stored = localStorage.getItem('selectedOrganizationId');
+        if (stored) {
+          orgId = stored;
+        } else {
+          const { data: orgs } = await supabase
+            .from('organization_members')
+            .select('organization_id')
+            .eq('user_id', user.id)
+            .eq('status', 'active')
+            .limit(1)
+            .single();
+
+          if (!orgs) return false;
+          orgId = orgs.organization_id;
+        }
+      }
+
+      if (!orgId) return false;
+
+      return checkRolePermission(user.id, orgId, permission);
+    } catch (err) {
+      console.error('Permission check failed:', err);
+      return false;
+    }
+  };
+
+  const canAny = async (permissions: string[]): Promise<boolean> => {
+    const results = await Promise.all(permissions.map(p => can(p)));
+    return results.some(r => r);
+  };
+
+  const canAll = async (permissions: string[]): Promise<boolean> => {
+    const results = await Promise.all(permissions.map(p => can(p)));
+    return results.every(r => r);
+  };
+
+  return { can, canAny, canAll };
+}

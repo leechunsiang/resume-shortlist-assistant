@@ -11,7 +11,8 @@ import { useRipple, RippleEffect } from '@/components/ripple-effect';
 import { AnimatedCounter, PulseStatusBadge } from '@/components/animated-counter';
 import { GlassButton } from '@/components/ui/glass-button';
 import { exportCandidatesToCSV, exportCandidatesToPDF } from '@/lib/export';
-import { Download, FileText } from 'lucide-react';
+import { Download, FileText, Lock } from 'lucide-react';
+import { usePermissions, useRole } from '@/lib/rbac';
 
 interface JobApplication {
   id: string;
@@ -40,6 +41,8 @@ interface CandidateWithJobs extends Candidate {
 
 export default function CandidatesPage() {
   const router = useRouter();
+  const { can } = usePermissions();
+  const { isViewer } = useRole();
   const [candidates, setCandidates] = useState<CandidateWithJobs[]>([]);
   const [selectedCandidate, setSelectedCandidate] = useState<CandidateWithJobs | null>(null);
   const [candidateApplications, setCandidateApplications] = useState<JobApplication[]>([]);
@@ -50,11 +53,30 @@ export default function CandidatesPage() {
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   
+  // RBAC permissions
+  const [canExport, setCanExport] = useState(false);
+  const [isViewerRole, setIsViewerRole] = useState(false);
+  
   // Ripple effects for stat cards
   const totalCandidatesRipple = useRipple();
   const shortlistedRipple = useRipple();
   const pendingRipple = useRipple();
   const interviewedRipple = useRipple();
+
+  // Check permissions
+  useEffect(() => {
+    const checkPermissions = async () => {
+      const [exp, viewer] = await Promise.all([
+        can('candidates.export'),
+        isViewer(),
+      ]);
+      
+      setCanExport(exp);
+      setIsViewerRole(viewer);
+    };
+
+    checkPermissions();
+  }, [can, isViewer]);
 
   useEffect(() => {
     async function fetchCandidates() {
@@ -222,54 +244,63 @@ export default function CandidatesPage() {
               <p className="text-gray-400">Review and manage candidate applications</p>
             </div>
             <div className="flex items-center gap-3">
-              <div className="relative">
-                <button
-                  onClick={() => setExportMenuOpen((v) => !v)}
-                  onBlur={(e) => {
-                    // Close menu when clicking outside
-                    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                      setTimeout(() => setExportMenuOpen(false), 150);
-                    }
-                  }}
-                  disabled={candidates.length === 0}
-                  className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition-colors border border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>Export</span>
-                </button>
+              {canExport && (
+                <div className="relative">
+                  <button
+                    onClick={() => setExportMenuOpen((v) => !v)}
+                    onBlur={(e) => {
+                      // Close menu when clicking outside
+                      if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                        setTimeout(() => setExportMenuOpen(false), 150);
+                      }
+                    }}
+                    disabled={candidates.length === 0}
+                    className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition-colors border border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Export</span>
+                  </button>
 
-                <AnimatePresence>
-                  {exportMenuOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.95, y: -10 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                      transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
-                      className="absolute right-0 mt-2 w-40 bg-gray-900 border border-gray-700 rounded-lg shadow-lg p-1 z-[60]"
-                      onMouseLeave={() => setExportMenuOpen(false)}
-                    >
-                      <button
-                        onClick={() => {
-                          exportCandidatesToCSV(candidates as any);
-                          setExportMenuOpen(false);
-                        }}
-                        className="w-full text-left px-3 py-2 hover:bg-gray-800 rounded text-sm text-white transition-colors"
+                  <AnimatePresence>
+                    {exportMenuOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                        transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
+                        className="absolute right-0 mt-2 w-40 bg-gray-900 border border-gray-700 rounded-lg shadow-lg p-1 z-[60]"
+                        onMouseLeave={() => setExportMenuOpen(false)}
                       >
-                        CSV
-                      </button>
-                      <button
-                        onClick={() => {
-                          exportCandidatesToPDF(candidates as any);
-                          setExportMenuOpen(false);
-                        }}
-                        className="w-full text-left px-3 py-2 hover:bg-gray-800 rounded text-sm text-white transition-colors"
-                      >
-                        PDF
-                      </button>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+                        <button
+                          onClick={() => {
+                            exportCandidatesToCSV(candidates as any);
+                            setExportMenuOpen(false);
+                          }}
+                          className="w-full text-left px-3 py-2 hover:bg-gray-800 rounded text-sm text-white transition-colors"
+                        >
+                          CSV
+                        </button>
+                        <button
+                          onClick={() => {
+                            exportCandidatesToPDF(candidates as any);
+                            setExportMenuOpen(false);
+                          }}
+                          className="w-full text-left px-3 py-2 hover:bg-gray-800 rounded text-sm text-white transition-colors"
+                        >
+                          PDF
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
+
+              {isViewerRole && (
+                <div className="flex items-center gap-2 px-4 py-2 bg-gray-800/50 border border-gray-700 rounded-lg text-gray-400 text-sm">
+                  <Lock className="w-4 h-4" />
+                  <span>View Only</span>
+                </div>
+              )}
 
               <GlassButton
                 size="default"

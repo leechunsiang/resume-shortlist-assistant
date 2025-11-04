@@ -8,8 +8,9 @@ import { Trash2, AlertTriangle, User, Mail, Shield, Settings as SettingsIcon, Bu
 import { motion } from 'framer-motion';
 import { useOrganization } from '@/contexts/organization-context';
 import { OrganizationSwitcher } from '@/components/organization-switcher';
+import { RBACMatrix } from '@/components/rbac-matrix';
 
-type TabType = 'account' | 'organization' | 'team';
+type TabType = 'account' | 'organization' | 'team' | 'permissions';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -395,6 +396,17 @@ export default function SettingsPage() {
                   <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 rounded-full text-xs">
                     {members.length}
                   </span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('permissions')}
+                  className={`px-4 py-2 rounded-t-lg font-medium transition-all flex items-center gap-2 ${
+                    activeTab === 'permissions'
+                      ? 'bg-gray-800/50 text-blue-400 border-b-2 border-blue-400'
+                      : 'text-gray-400 hover:text-white hover:bg-gray-800/30'
+                  }`}
+                >
+                  <Shield className="w-4 h-4" />
+                  Permissions
                 </button>
               </>
             )}
@@ -1010,6 +1022,65 @@ export default function SettingsPage() {
             </div>
           </motion.div>
         </div>
+      )}
+
+      {/* Permissions Tab */}
+      {activeTab === 'permissions' && currentOrganization && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="space-y-6"
+        >
+          <div className="bg-gray-900/40 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <Shield className="w-6 h-6 text-blue-400" />
+              <div>
+                <h2 className="text-xl font-semibold text-white">Role-Based Access Control</h2>
+                <p className="text-sm text-gray-400 mt-1">
+                  View permissions for each role in your organization
+                </p>
+              </div>
+            </div>
+
+            {/* Role Description Cards */}
+            <div className="mb-6 bg-blue-900/10 border border-blue-500/20 rounded-lg p-4">
+              <h3 className="text-sm font-semibold text-blue-400 mb-2">About Roles</h3>
+              <p className="text-sm text-gray-300 mb-3">
+                Each role has different levels of access to features and resources in your organization.
+              </p>
+              <ul className="space-y-2 text-sm text-gray-300">
+                <li className="flex items-start gap-2">
+                  <Crown className="w-4 h-4 text-yellow-400 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <span className="font-semibold text-yellow-400">Owner</span> - Full control including organization deletion and ownership transfer
+                  </div>
+                </li>
+                <li className="flex items-start gap-2">
+                  <ShieldCheck className="w-4 h-4 text-purple-400 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <span className="font-semibold text-purple-400">Admin</span> - Full access to all features except ownership transfer
+                  </div>
+                </li>
+                <li className="flex items-start gap-2">
+                  <User className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <span className="font-semibold text-blue-400">Member</span> - Can manage jobs and candidates, use AI features
+                  </div>
+                </li>
+                <li className="flex items-start gap-2">
+                  <User className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <span className="font-semibold text-gray-400">Viewer</span> - Read-only access to jobs and candidates
+                  </div>
+                </li>
+              </ul>
+            </div>
+
+            {/* RBAC Matrix Component */}
+            <RBACMatrix />
+          </div>
+        </motion.div>
       )}
     </DashboardLayout>
   );
