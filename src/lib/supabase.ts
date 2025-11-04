@@ -253,6 +253,50 @@ export const organizationMembersApi = {
     if (error) return null;
     return data as OrganizationMember;
   },
+
+  // Activate pending memberships for a user
+  activatePendingMemberships: async (userId: string, userEmail: string) => {
+    console.log('[ACTIVATE] Attempting to activate memberships for:', { userId, userEmail });
+    
+    // First, check if there are any pending memberships
+    const { data: pendingMembers, error: checkError } = await supabase
+      .from('organization_members')
+      .select('*')
+      .eq('user_email', userEmail.toLowerCase())
+      .eq('status', 'pending');
+    
+    console.log('[ACTIVATE] Found pending memberships:', pendingMembers);
+    
+    if (checkError) {
+      console.error('[ACTIVATE] Error checking pending memberships:', checkError);
+      return [];
+    }
+
+    if (!pendingMembers || pendingMembers.length === 0) {
+      console.log('[ACTIVATE] No pending memberships found');
+      return [];
+    }
+
+    // Now activate them
+    const { data, error } = await supabase
+      .from('organization_members')
+      .update({
+        user_id: userId,
+        status: 'active',
+        joined_at: new Date().toISOString(),
+      })
+      .eq('user_email', userEmail.toLowerCase())
+      .eq('status', 'pending')
+      .select();
+    
+    if (error) {
+      console.error('[ACTIVATE] Error activating pending memberships:', error);
+      return [];
+    }
+    
+    console.log('[ACTIVATE] Successfully activated memberships:', data);
+    return data as OrganizationMember[];
+  },
 };
 
 export const candidatesApi = {

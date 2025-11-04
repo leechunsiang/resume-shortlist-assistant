@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
+import { supabase, organizationMembersApi } from '@/lib/supabase';
 import { BeamsBackground } from '@/components/ui/beams-background';
 
 export default function LoginPage() {
@@ -26,7 +26,13 @@ export default function LoginPage() {
 
       if (signInError) throw signInError;
 
-      if (data.session) {
+      if (data.session && data.user) {
+        // Activate any pending memberships for this user
+        await organizationMembersApi.activatePendingMemberships(
+          data.user.id,
+          data.user.email || email
+        );
+
         // Force a full page reload to ensure cookies are set and middleware picks up the session
         window.location.href = '/';
       }

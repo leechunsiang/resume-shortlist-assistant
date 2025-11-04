@@ -10,6 +10,7 @@ import { authApi } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { AuthModal } from "@/components/auth-modal";
 import { BeamsBackground } from "@/components/ui/beams-background";
+import { OrganizationSwitcher } from "@/components/organization-switcher";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -140,6 +141,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         <SidebarBody className="justify-between gap-10 bg-black border-r border-gray-800">
           <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
             <Logo open={open} />
+            {isAuthenticated && (
+              <div className="mt-6">
+                <OrganizationSwitcher />
+              </div>
+            )}
             <div className="mt-8 flex flex-col gap-2">
               {links.map((link, idx) => (
                 <SidebarLink 

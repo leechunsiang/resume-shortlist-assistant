@@ -4,13 +4,15 @@ import { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/dashboard-layout';
 import { authApi, organizationsApi, organizationMembersApi, Organization, OrganizationMember } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
-import { Trash2, AlertTriangle, User, Mail, Shield, Settings as SettingsIcon, Building2, Users, UserPlus, Crown, ShieldCheck, MoreVertical, Edit, UserMinus } from 'lucide-react';
+import { Trash2, AlertTriangle, User, Mail, Shield, Settings as SettingsIcon, Building2, Users, UserPlus, Crown, ShieldCheck, MoreVertical, Edit, UserMinus, RefreshCw } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useOrganization } from '@/contexts/organization-context';
 
 type TabType = 'account' | 'organization' | 'team';
 
 export default function SettingsPage() {
   const router = useRouter();
+  const { currentOrganization, refreshOrganizations } = useOrganization();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>('account');
@@ -20,7 +22,6 @@ export default function SettingsPage() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   
   // Organization state
-  const [organization, setOrganization] = useState<Organization | null>(null);
   const [members, setMembers] = useState<OrganizationMember[]>([]);
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
   const [newMemberEmail, setNewMemberEmail] = useState('');
@@ -28,6 +29,7 @@ export default function SettingsPage() {
   const [addMemberError, setAddMemberError] = useState<string | null>(null);
   const [isAddingMember, setIsAddingMember] = useState(false);
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+  const [isRefreshingMembers, setIsRefreshingMembers] = useState(false);
   
   // Manage member state
   const [selectedMember, setSelectedMember] = useState<OrganizationMember | null>(null);
@@ -47,20 +49,6 @@ export default function SettingsPage() {
           return;
         }
         setUser(currentUser);
-        
-        // Fetch user's organization
-        const orgs = await organizationsApi.getUserOrganizations(currentUser.id);
-        if (orgs && orgs.length > 0) {
-          setOrganization(orgs[0]); // Get first organization
-          
-          // Fetch organization members
-          const orgMembers = await organizationMembersApi.getMembers(orgs[0].id);
-          setMembers(orgMembers);
-          
-          // Get current user's role
-          const userMember = orgMembers.find(m => m.user_id === currentUser.id);
-          setCurrentUserRole(userMember?.role || null);
-        }
       } catch (error) {
         console.error('Error fetching user:', error);
         router.push('/login');
@@ -71,6 +59,28 @@ export default function SettingsPage() {
 
     fetchUser();
   }, [router]);
+
+  // Fetch members when organization changes
+  useEffect(() => {
+    const fetchMembers = async () => {
+      if (currentOrganization) {
+        try {
+          const orgMembers = await organizationMembersApi.getMembers(currentOrganization.id);
+          setMembers(orgMembers);
+          
+          // Get current user's role
+          if (user) {
+            const userMember = orgMembers.find(m => m.user_id === user.id);
+            setCurrentUserRole(userMember?.role || null);
+          }
+        } catch (error) {
+          console.error('Error fetching members:', error);
+        }
+      }
+    };
+
+    fetchMembers();
+  }, [currentOrganization, user]);
 
   const handleDeleteAccount = async () => {
     if (deleteConfirmation !== 'DELETE') {
@@ -107,7 +117,7 @@ export default function SettingsPage() {
       return;
     }
 
-    if (!organization) {
+    if (!currentOrganization) {
       setAddMemberError('No organization found');
       return;
     }
@@ -132,7 +142,7 @@ export default function SettingsPage() {
         body: JSON.stringify({
           email: newMemberEmail.trim(),
           role: newMemberRole,
-          organizationId: organization.id,
+          organizationId: currentOrganization.id,
         }),
       });
 
@@ -143,8 +153,13 @@ export default function SettingsPage() {
       }
 
       // Refresh members list
-      const orgMembers = await organizationMembersApi.getMembers(organization.id);
-      setMembers(orgMembers);
+      if (currentOrganization) {
+        const orgMembers = await organizationMembersApi.getMembers(currentOrganization.id);
+        setMembers(orgMembers);
+      }
+
+      // Refresh organizations context (in case a new user just signed up)
+      await refreshOrganizations();
       
       // Close modal and reset form
       setShowAddMemberModal(false);
@@ -196,7 +211,7 @@ export default function SettingsPage() {
   };
 
   const handleUpdateRole = async () => {
-    if (!selectedMember || !organization) return;
+    if (!selectedMember || !currentOrganization) return;
 
     setIsUpdatingMember(true);
     setManageMemberError(null);
@@ -217,7 +232,7 @@ export default function SettingsPage() {
         body: JSON.stringify({
           memberId: selectedMember.id,
           role: newRole,
-          organizationId: organization.id,
+          organizationId: currentOrganization.id,
         }),
       });
 
@@ -228,7 +243,7 @@ export default function SettingsPage() {
       }
 
       // Refresh members list
-      const orgMembers = await organizationMembersApi.getMembers(organization.id);
+      const orgMembers = await organizationMembersApi.getMembers(currentOrganization.id);
       setMembers(orgMembers);
       
       // Close modal
@@ -243,7 +258,7 @@ export default function SettingsPage() {
   };
 
   const handleDeleteMember = async () => {
-    if (!selectedMember || !organization) return;
+    if (!selectedMember || !currentOrganization) return;
 
     setIsDeletingMember(true);
     setManageMemberError(null);
@@ -263,7 +278,7 @@ export default function SettingsPage() {
         },
         body: JSON.stringify({
           memberId: selectedMember.id,
-          organizationId: organization.id,
+          organizationId: currentOrganization.id,
         }),
       });
 
@@ -274,7 +289,7 @@ export default function SettingsPage() {
       }
 
       // Refresh members list
-      const orgMembers = await organizationMembersApi.getMembers(organization.id);
+      const orgMembers = await organizationMembersApi.getMembers(currentOrganization.id);
       setMembers(orgMembers);
       
       // Close modals
@@ -286,6 +301,30 @@ export default function SettingsPage() {
       setManageMemberError(error.message || 'Failed to remove member. Please try again.');
     } finally {
       setIsDeletingMember(false);
+    }
+  };
+
+  const handleRefreshMembers = async () => {
+    if (!currentOrganization || !user) return;
+    
+    setIsRefreshingMembers(true);
+    try {
+      // Try to activate any pending memberships
+      console.log('[REFRESH] Checking for pending memberships...');
+      await organizationMembersApi.activatePendingMemberships(user.id, user.email || '');
+      
+      // Refresh the member list
+      const orgMembers = await organizationMembersApi.getMembers(currentOrganization.id);
+      setMembers(orgMembers);
+      
+      // Also refresh organizations in context
+      await refreshOrganizations();
+      
+      console.log('[REFRESH] Members refreshed successfully');
+    } catch (error) {
+      console.error('[REFRESH] Error refreshing members:', error);
+    } finally {
+      setIsRefreshingMembers(false);
     }
   };
 
@@ -329,7 +368,7 @@ export default function SettingsPage() {
               <User className="w-4 h-4" />
               Account
             </button>
-            {organization && (
+            {currentOrganization && (
               <>
                 <button
                   onClick={() => setActiveTab('organization')}
@@ -468,7 +507,7 @@ export default function SettingsPage() {
           )}
 
           {/* Organization Tab */}
-          {activeTab === 'organization' && organization && (
+          {activeTab === 'organization' && currentOrganization && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -486,48 +525,48 @@ export default function SettingsPage() {
                 <div>
                   <label className="text-sm text-gray-400 block mb-1">Organization Name</label>
                   <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg px-4 py-3">
-                    <span className="text-white font-medium">{organization.name}</span>
+                    <span className="text-white font-medium">{currentOrganization.name}</span>
                   </div>
                 </div>
 
-                {organization.description && (
+                {currentOrganization.description && (
                   <div>
                     <label className="text-sm text-gray-400 block mb-1">Description</label>
                     <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg px-4 py-3">
-                      <span className="text-white">{organization.description}</span>
+                      <span className="text-white">{currentOrganization.description}</span>
                     </div>
                   </div>
                 )}
 
-                {organization.industry && (
+                {currentOrganization.industry && (
                   <div>
                     <label className="text-sm text-gray-400 block mb-1">Industry</label>
                     <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg px-4 py-3">
-                      <span className="text-white">{organization.industry}</span>
+                      <span className="text-white">{currentOrganization.industry}</span>
                     </div>
                   </div>
                 )}
 
-                {organization.size && (
+                {currentOrganization.size && (
                   <div>
                     <label className="text-sm text-gray-400 block mb-1">Company Size</label>
                     <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg px-4 py-3">
-                      <span className="text-white">{organization.size} employees</span>
+                      <span className="text-white">{currentOrganization.size} employees</span>
                     </div>
                   </div>
                 )}
 
-                {organization.website && (
+                {currentOrganization.website && (
                   <div>
                     <label className="text-sm text-gray-400 block mb-1">Website</label>
                     <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg px-4 py-3">
                       <a 
-                        href={organization.website} 
+                        href={currentOrganization.website} 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="text-indigo-400 hover:text-indigo-300 transition-colors"
                       >
-                        {organization.website}
+                        {currentOrganization.website}
                       </a>
                     </div>
                   </div>
@@ -546,7 +585,7 @@ export default function SettingsPage() {
                 <div>
                   <label className="text-sm text-gray-400 block mb-1">Created</label>
                   <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg px-4 py-3">
-                    <span className="text-white">{new Date(organization.created_at).toLocaleDateString()}</span>
+                    <span className="text-white">{new Date(currentOrganization.created_at).toLocaleDateString()}</span>
                   </div>
                 </div>
               </div>
@@ -554,7 +593,7 @@ export default function SettingsPage() {
           )}
 
           {/* Team Tab */}
-          {activeTab === 'team' && organization && (
+          {activeTab === 'team' && currentOrganization && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -567,15 +606,26 @@ export default function SettingsPage() {
                   <h2 className="text-xl font-semibold text-white">Team Members</h2>
                   <span className="text-sm text-gray-400">({members.length})</span>
                 </div>
-                {(currentUserRole === 'owner' || currentUserRole === 'admin') && (
+                <div className="flex gap-2">
                   <button
-                    onClick={() => setShowAddMemberModal(true)}
-                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors flex items-center gap-2"
+                    onClick={handleRefreshMembers}
+                    disabled={isRefreshingMembers}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Refresh member list and activate pending invitations"
                   >
-                    <UserPlus className="w-4 h-4" />
-                    Add Member
+                    <RefreshCw className={`w-4 h-4 ${isRefreshingMembers ? 'animate-spin' : ''}`} />
+                    Refresh
                   </button>
-                )}
+                  {(currentUserRole === 'owner' || currentUserRole === 'admin') && (
+                    <button
+                      onClick={() => setShowAddMemberModal(true)}
+                      className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors flex items-center gap-2"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                      Add Member
+                    </button>
+                  )}
+                </div>
               </div>
               
               <div className="space-y-3">

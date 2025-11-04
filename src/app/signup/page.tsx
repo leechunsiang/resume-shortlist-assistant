@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
+import { supabase, organizationMembersApi } from '@/lib/supabase';
 import { BeamsBackground } from '@/components/ui/beams-background';
 
 export default function SignupPage() {
@@ -59,6 +59,12 @@ export default function SignupPage() {
       if (signUpError) throw signUpError;
 
       if (data.user) {
+        // Activate any pending memberships for this user
+        await organizationMembersApi.activatePendingMemberships(
+          data.user.id,
+          data.user.email || email
+        );
+
         setSuccess(true);
         setTimeout(() => {
           window.location.href = '/organization/setup';

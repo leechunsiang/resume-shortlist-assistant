@@ -37,6 +37,16 @@ Building a resume shortlist assistant web app using Next.js, React, Supabase, sh
 - ✅ User profile display (name + username)
 - ✅ Auth state management
 - ✅ Protected routes with middleware
+- ✅ Automatic pending membership activation on login/signup
+
+### Organization Management
+- ✅ Multiple organization support
+- ✅ Organization switcher in sidebar
+- ✅ Context-based organization management
+- ✅ Team member management (add, update role, remove)
+- ✅ Invitation system with pending status
+- ✅ Automatic membership activation
+- ✅ LocalStorage persistence for selected organization
 
 ### AI Features
 - ✅ Google Gemini AI integration
@@ -51,6 +61,12 @@ Building a resume shortlist assistant web app using Next.js, React, Supabase, sh
 - ✅ Data sanitization and error handling
 
 ## Key Files
+
+### Organization Management
+- `src/contexts/organization-context.tsx` - Global organization state
+- `src/components/organization-switcher.tsx` - Dropdown switcher UI
+- `ORGANIZATION_SWITCHER.md` - Organization switcher documentation
+- `PENDING_MEMBERSHIP_ACTIVATION.md` - Membership activation docs
 
 ### AI Integration
 - `src/lib/gemini.ts` - Gemini AI service
