@@ -10,6 +10,7 @@ import { authApi } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { AuthModal } from "@/components/auth-modal";
 import { BeamsBackground } from "@/components/ui/beams-background";
+import { clearRoleCache } from "@/lib/rbac";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -62,6 +63,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const handleLogout = async () => {
     try {
       await authApi.signOut();
+      clearRoleCache(); // Clear the RBAC cache on logout
       setIsAuthenticated(false);
       setUserEmail(null);
       setFirstName(null);

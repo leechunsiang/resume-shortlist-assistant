@@ -77,6 +77,11 @@ export default function JobListings() {
   // Check permissions
   useEffect(() => {
     const checkPermissions = async () => {
+      // Wait for organization to be loaded
+      if (orgLoading || !currentOrganization) {
+        return;
+      }
+
       const [create, update, del, exp, ai, viewer] = await Promise.all([
         can('jobs.create'),
         can('jobs.update'),
@@ -85,6 +90,8 @@ export default function JobListings() {
         can('ai.shortlist'),
         isViewer(),
       ]);
+      
+      console.log('[JOB LISTINGS] Permissions:', { create, update, del: del, exp, ai, viewer });
       
       setCanCreate(create);
       setCanUpdate(update);
@@ -95,10 +102,12 @@ export default function JobListings() {
     };
 
     checkPermissions();
-  }, [can, isViewer]);
+  }, [can, isViewer, currentOrganization, orgLoading]);
 
   useEffect(() => {
     async function fetchData() {
+      console.log('[JOB LISTINGS] fetchData called - orgLoading:', orgLoading, 'currentOrganization:', currentOrganization?.name);
+      
       // Wait for organization context to load
       if (orgLoading) {
         console.log('[JOB LISTINGS] Waiting for organization context...');
@@ -107,6 +116,8 @@ export default function JobListings() {
 
       // Check if user is authenticated
       const user = await authApi.getCurrentUser();
+      console.log('[JOB LISTINGS] User check:', user ? `Found: ${user.email}` : 'Not found');
+      
       if (!user) {
         console.log('[JOB LISTINGS] No user found, redirecting to login');
         router.push('/login');

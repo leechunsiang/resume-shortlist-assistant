@@ -36,8 +36,11 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
         console.log('[ORG CONTEXT] No user found');
         setOrganizations([]);
         setCurrentOrganizationState(null);
+        setLoading(false);
         return;
       }
+
+      console.log('[ORG CONTEXT] User found:', user.id, user.email);
 
       // First, activate any pending memberships (only on initial load or refresh)
       if (!hasInitializedRef.current) {
@@ -73,12 +76,14 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
         console.log('[ORG CONTEXT] No organizations found');
         setCurrentOrganizationState(null);
       }
+      
+      setLoading(false);
     } catch (error) {
       console.error('[ORG CONTEXT] Error fetching organizations:', error);
       setOrganizations([]);
       setCurrentOrganizationState(null);
-    } finally {
       setLoading(false);
+    } finally {
       isFetchingRef.current = false;
     }
   };

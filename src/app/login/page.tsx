@@ -27,18 +27,23 @@ export default function LoginPage() {
       if (signInError) throw signInError;
 
       if (data.session && data.user) {
+        console.log('[LOGIN] Login successful, user:', data.user.email);
+        
         // Activate any pending memberships for this user
         await organizationMembersApi.activatePendingMemberships(
           data.user.id,
           data.user.email || email
         );
 
-        // Force a full page reload to ensure cookies are set and middleware picks up the session
+        console.log('[LOGIN] Memberships activated, redirecting...');
+        
+        // Small delay to ensure session is persisted, then redirect
+        await new Promise(resolve => setTimeout(resolve, 100));
         window.location.href = '/';
       }
     } catch (err: any) {
+      console.error('[LOGIN] Login error:', err);
       setError(err.message || 'Failed to login');
-    } finally {
       setLoading(false);
     }
   };

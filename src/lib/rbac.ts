@@ -1,12 +1,7 @@
 // Role-Based Access Control (RBAC) Utility
 // Manages user roles and permissions
 
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { supabase } from './supabase';
 
 export type RoleName = 'admin' | 'recruiter' | 'viewer';
 
@@ -243,14 +238,26 @@ export async function requirePermission(
   return { authorized: true };
 }
 
+// Simple cache for organization roles to prevent repeated DB queries
+const roleCache = new Map<string, { role: string; timestamp: number }>();
+const CACHE_DURATION = 30000; // 30 seconds
+
 /**
- * Get user's organization role (owner, admin, member, viewer)
+ * Get user's organization role (owner, admin, member, viewer) with caching
  */
 export async function getOrganizationRole(
   userId: string,
   organizationId: string
 ): Promise<string | null> {
   try {
+    const cacheKey = `${userId}-${organizationId}`;
+    const cached = roleCache.get(cacheKey);
+    
+    // Return cached role if still valid
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      return cached.role;
+    }
+
     const { data, error } = await supabase
       .from('organization_members')
       .select('role')
@@ -259,7 +266,16 @@ export async function getOrganizationRole(
       .eq('status', 'active')
       .single();
 
-    if (error || !data) return null;
+    if (error || !data) {
+      roleCache.delete(cacheKey);
+      return null;
+    }
+
+    // Cache the result
+    roleCache.set(cacheKey, {
+      role: data.role,
+      timestamp: Date.now(),
+    });
 
     return data.role;
   } catch (err) {
@@ -373,17 +389,25 @@ export async function checkRolePermission(
 }
 
 /**
+ * Clear the role cache (useful after role changes or logout)
+ */
+export function clearRoleCache() {
+  roleCache.clear();
+}
+
+/**
  * React hook for role-based checks
  */
 export function useRole(organizationId?: string) {
   const checkRole = async (roles: string | string[]): Promise<boolean> => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return false;
+      // Use getSession() instead of getUser() - it's cached and doesn't make a network request
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return false;
 
       let orgId = organizationId;
       if (!orgId) {
-        // Get from localStorage or first organization
+        // Get from localStorage first (fast)
         const stored = localStorage.getItem('selectedOrganizationId');
         if (stored) {
           orgId = stored;
@@ -391,7 +415,7 @@ export function useRole(organizationId?: string) {
           const { data: orgs } = await supabase
             .from('organization_members')
             .select('organization_id')
-            .eq('user_id', user.id)
+            .eq('user_id', session.user.id)
             .eq('status', 'active')
             .limit(1)
             .single();
@@ -403,7 +427,7 @@ export function useRole(organizationId?: string) {
 
       if (!orgId) return false;
 
-      return hasOrganizationRole(user.id, orgId, roles);
+      return hasOrganizationRole(session.user.id, orgId, roles);
     } catch (err) {
       console.error('Role check failed:', err);
       return false;
@@ -425,11 +449,13 @@ export function useRole(organizationId?: string) {
 export function usePermissions(organizationId?: string) {
   const can = async (permission: string): Promise<boolean> => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return false;
+      // Use getSession() instead of getUser() - it's cached and doesn't make a network request
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return false;
 
       let orgId = organizationId;
       if (!orgId) {
+        // Get from localStorage first (fast)
         const stored = localStorage.getItem('selectedOrganizationId');
         if (stored) {
           orgId = stored;
@@ -437,7 +463,7 @@ export function usePermissions(organizationId?: string) {
           const { data: orgs } = await supabase
             .from('organization_members')
             .select('organization_id')
-            .eq('user_id', user.id)
+            .eq('user_id', session.user.id)
             .eq('status', 'active')
             .limit(1)
             .single();
@@ -449,7 +475,7 @@ export function usePermissions(organizationId?: string) {
 
       if (!orgId) return false;
 
-      return checkRolePermission(user.id, orgId, permission);
+      return checkRolePermission(session.user.id, orgId, permission);
     } catch (err) {
       console.error('Permission check failed:', err);
       return false;

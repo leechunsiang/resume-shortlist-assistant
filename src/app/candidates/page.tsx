@@ -68,17 +68,24 @@ export default function CandidatesPage() {
   // Check permissions
   useEffect(() => {
     const checkPermissions = async () => {
+      // Wait for organization to be loaded
+      if (orgLoading || !currentOrganization) {
+        return;
+      }
+
       const [exp, viewer] = await Promise.all([
         can('candidates.export'),
         isViewer(),
       ]);
+      
+      console.log('[CANDIDATES] Permissions:', { exp, viewer });
       
       setCanExport(exp);
       setIsViewerRole(viewer);
     };
 
     checkPermissions();
-  }, [can, isViewer]);
+  }, [can, isViewer, currentOrganization, orgLoading]);
 
   useEffect(() => {
     async function fetchCandidates() {
