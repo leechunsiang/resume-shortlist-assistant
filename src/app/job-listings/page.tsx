@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { jobsApi, candidatesApi, organizationsApi, authApi, type JobListing } from '@/lib/supabase';
+import { jobsApi, candidatesApi, authApi, type JobListing } from '@/lib/supabase';
+import { useOrganization } from '@/contexts/organization-context';
 import { DashboardLayout } from '@/components/dashboard-layout';
 import { AnimatePresence, motion } from 'framer-motion';
 import { X, Sparkles, Edit, Users, Trash2, Download, FileText, Check, ChevronLeft, ChevronRight, Lock } from 'lucide-react';
@@ -29,8 +30,9 @@ export default function JobListings() {
   const router = useRouter();
   const { can } = usePermissions();
   const { isViewer } = useRole();
+  const { currentOrganization, loading: orgLoading } = useOrganization();
   const [jobs, setJobs] = useState<JobListing[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [totalCandidates, setTotalCandidates] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -97,41 +99,45 @@ export default function JobListings() {
 
   useEffect(() => {
     async function fetchData() {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        // Get current user and their organization
-        let user;
-        try {
-          user = await authApi.getCurrentUser();
-        } catch (authError) {
-          console.log('User not authenticated');
-          router.push('/login');
-          return;
-        }
+      // Wait for organization context to load
+      if (orgLoading) {
+        return;
+      }
 
+      // Check authentication
+      try {
+        const user = await authApi.getCurrentUser();
         if (!user) {
           router.push('/login');
           return;
         }
-
-        const orgs = await organizationsApi.getUserOrganizations(user.id);
-        if (!orgs || orgs.length === 0) {
-          router.push('/organization/setup');
-          return;
-        }
-
-        const orgId = orgs[0].id;
-        setOrganizationId(orgId);
         setUserId(user.id);
-        
-        // Fetch all jobs and total candidates count for this organization
+      } catch (authError) {
+        console.log('User not authenticated');
+        router.push('/login');
+        return;
+      }
+
+      // Check if organization is selected
+      if (!currentOrganization) {
+        router.push('/organization/setup');
+        return;
+      }
+
+      // Fetch data for the current organization
+      try {
+        setLoading(true);
+        setError(null);
+
+        console.log('[JOB LISTINGS] Fetching data for organization:', currentOrganization.name, currentOrganization.id);
+        setOrganizationId(currentOrganization.id);
+
         const [jobsData, candidatesData] = await Promise.all([
-          jobsApi.getAll(orgId),
-          candidatesApi.getAll(orgId)
+          jobsApi.getAll(currentOrganization.id),
+          candidatesApi.getAll(currentOrganization.id)
         ]);
-        
+
+        console.log('[JOB LISTINGS] Fetched', jobsData.length, 'jobs and', candidatesData.length, 'candidates');
         setJobs(jobsData);
         setTotalCandidates(candidatesData.length);
       } catch (err) {
@@ -143,7 +149,7 @@ export default function JobListings() {
     }
 
     fetchData();
-  }, [router]);
+  }, [router, currentOrganization, orgLoading]);
 
   const activeJobs = jobs.filter(job => job.status === 'active');
   const draftJobs = jobs.filter(job => job.status === 'draft');
@@ -546,7 +552,7 @@ export default function JobListings() {
             </div>
           )}
 
-          {loading ? (
+          {(loading || orgLoading) ? (
             <div className="text-center py-12">
               <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
               <p className="text-gray-400 mt-4">Loading jobs...</p>

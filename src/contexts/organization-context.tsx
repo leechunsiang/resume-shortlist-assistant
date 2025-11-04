@@ -45,12 +45,16 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
       // Load saved organization from localStorage or use first one
       const savedOrgId = localStorage.getItem('currentOrganizationId');
       const savedOrg = orgs.find(org => org.id === savedOrgId);
-      
+
       if (savedOrg) {
+        console.log('[ORG CONTEXT] Restored saved organization:', savedOrg.name, savedOrg.id);
         setCurrentOrganizationState(savedOrg);
+        localStorage.setItem('selectedOrganizationId', savedOrg.id); // For RBAC system
       } else if (orgs.length > 0) {
+        console.log('[ORG CONTEXT] No saved org, using first:', orgs[0].name, orgs[0].id);
         setCurrentOrganizationState(orgs[0]);
         localStorage.setItem('currentOrganizationId', orgs[0].id);
+        localStorage.setItem('selectedOrganizationId', orgs[0].id); // For RBAC system
       }
     } catch (error) {
       console.error('Error fetching organizations:', error);
@@ -79,8 +83,10 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
   }, []);
 
   const setCurrentOrganization = (org: Organization) => {
+    console.log('[ORG CONTEXT] Setting current organization to:', org.name, org.id);
     setCurrentOrganizationState(org);
     localStorage.setItem('currentOrganizationId', org.id);
+    localStorage.setItem('selectedOrganizationId', org.id); // For RBAC system
   };
 
   const refreshOrganizations = async () => {

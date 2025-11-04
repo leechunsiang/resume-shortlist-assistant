@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { candidatesApi, organizationsApi, authApi, type Candidate } from '@/lib/supabase';
+import { candidatesApi, authApi, type Candidate } from '@/lib/supabase';
+import { useOrganization } from '@/contexts/organization-context';
 import { DashboardLayout } from '@/components/dashboard-layout';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
@@ -43,11 +44,12 @@ export default function CandidatesPage() {
   const router = useRouter();
   const { can } = usePermissions();
   const { isViewer } = useRole();
+  const { currentOrganization, loading: orgLoading } = useOrganization();
   const [candidates, setCandidates] = useState<CandidateWithJobs[]>([]);
   const [selectedCandidate, setSelectedCandidate] = useState<CandidateWithJobs | null>(null);
   const [candidateApplications, setCandidateApplications] = useState<JobApplication[]>([]);
   const [loadingApplications, setLoadingApplications] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [organizationId, setOrganizationId] = useState<string | null>(null);
@@ -80,34 +82,38 @@ export default function CandidatesPage() {
 
   useEffect(() => {
     async function fetchCandidates() {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        // Get current user and their organization
-        let user;
-        try {
-          user = await authApi.getCurrentUser();
-        } catch (authError) {
-          console.log('User not authenticated');
-          router.push('/login');
-          return;
-        }
+      // Wait for organization context to load
+      if (orgLoading) {
+        return;
+      }
 
+      // Check authentication
+      try {
+        const user = await authApi.getCurrentUser();
         if (!user) {
           router.push('/login');
           return;
         }
+      } catch (authError) {
+        console.log('User not authenticated');
+        router.push('/login');
+        return;
+      }
 
-        const orgs = await organizationsApi.getUserOrganizations(user.id);
-        if (!orgs || orgs.length === 0) {
-          router.push('/organization/setup');
-          return;
-        }
+      // Check if organization is selected
+      if (!currentOrganization) {
+        router.push('/organization/setup');
+        return;
+      }
 
-        const orgId = orgs[0].id;
-        setOrganizationId(orgId);
-        
+      // Fetch data for the current organization
+      try {
+        setLoading(true);
+        setError(null);
+
+        console.log('[CANDIDATES] Fetching data for organization:', currentOrganization.name, currentOrganization.id);
+        setOrganizationId(currentOrganization.id);
+
         // Fetch candidates with their job applications
         const { data: candidatesData, error: candidatesError } = await supabase
           .from('candidates')
@@ -125,7 +131,7 @@ export default function CandidatesPage() {
               )
             )
           `)
-          .eq('organization_id', orgId)
+          .eq('organization_id', currentOrganization.id)
           .order('created_at', { ascending: false });
 
         if (candidatesError) {
@@ -133,6 +139,7 @@ export default function CandidatesPage() {
           throw candidatesError;
         }
 
+        console.log('[CANDIDATES] Fetched', candidatesData?.length || 0, 'candidates');
         setCandidates(candidatesData || []);
       } catch (err) {
         console.error('Error fetching candidates:', err);
@@ -143,7 +150,7 @@ export default function CandidatesPage() {
     }
 
     fetchCandidates();
-  }, [router]);
+  }, [router, currentOrganization, orgLoading]);
 
   // Fetch job applications for selected candidate
   const fetchCandidateApplications = async (candidateId: string) => {
@@ -326,7 +333,7 @@ export default function CandidatesPage() {
             </div>
           )}
 
-          {loading ? (
+          {(loading || orgLoading) ? (
             <div className="text-center py-12">
               <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
               <p className="text-gray-400 mt-4">Loading candidates...</p>
