@@ -10,11 +10,14 @@ export function OrganizationSwitcher() {
   const { organizations, currentOrganization, setCurrentOrganization, loading } = useOrganization();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
   const router = useRouter();
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node) &&
+          buttonRef.current && !buttonRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
     }
@@ -22,6 +25,17 @@ export function OrganizationSwitcher() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + 8,
+        left: rect.left,
+        width: rect.width,
+      });
+    }
+  }, [isOpen]);
 
   if (loading) {
     return (
@@ -44,8 +58,9 @@ export function OrganizationSwitcher() {
   }
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <>
       <button
+        ref={buttonRef}
         onClick={() => setIsOpen(!isOpen)}
         className="w-full px-3 py-2 bg-gray-800/50 hover:bg-gray-800 rounded-lg border border-gray-700 hover:border-gray-600 transition-all flex items-center gap-2"
       >
@@ -63,11 +78,18 @@ export function OrganizationSwitcher() {
       <AnimatePresence>
         {isOpen && (
           <motion.div
+            ref={dropdownRef}
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.15 }}
-            className="absolute top-full left-0 right-0 mt-2 bg-gray-800 border border-gray-700 rounded-lg shadow-2xl overflow-hidden z-50"
+            style={{
+              position: 'fixed',
+              top: `${dropdownPosition.top}px`,
+              left: `${dropdownPosition.left}px`,
+              width: `${dropdownPosition.width}px`,
+            }}
+            className="bg-gray-800 border border-gray-700 rounded-lg shadow-2xl z-[9999]"
           >
             <div className="py-1">
               {organizations.map((org) => (
@@ -109,6 +131,6 @@ export function OrganizationSwitcher() {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </>
   );
 }

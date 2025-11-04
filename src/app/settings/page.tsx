@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { Trash2, AlertTriangle, User, Mail, Shield, Settings as SettingsIcon, Building2, Users, UserPlus, Crown, ShieldCheck, MoreVertical, Edit, UserMinus, RefreshCw } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useOrganization } from '@/contexts/organization-context';
+import { OrganizationSwitcher } from '@/components/organization-switcher';
 
 type TabType = 'account' | 'organization' | 'team';
 
@@ -340,7 +341,7 @@ export default function SettingsPage() {
 
   return (
     <DashboardLayout>
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden">
         {/* Header */}
         <header className="bg-transparent px-4 md:px-8 py-4 md:py-6 border-b border-gray-800/50">
           <div className="flex items-center gap-3">
@@ -400,7 +401,7 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        <div className="p-4 md:p-8 max-w-4xl">
+        <div className="p-4 md:p-8 max-w-4xl overflow-visible">
           {/* Account Settings Tab */}
           {activeTab === 'account' && (
             <>
@@ -598,35 +599,39 @@ export default function SettingsPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
-              className="bg-gray-900/40 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-6"
+              className="space-y-6 overflow-visible"
             >
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
+              {/* Organization Switcher and Actions Bar */}
+              <div className="flex items-center gap-3">
+                <div className="w-64">
+                  <OrganizationSwitcher />
+                </div>
+                <button
+                  onClick={handleRefreshMembers}
+                  disabled={isRefreshingMembers}
+                  className="p-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Refresh member list and activate pending invitations"
+                >
+                  <RefreshCw className={`w-5 h-5 ${isRefreshingMembers ? 'animate-spin' : ''}`} />
+                </button>
+                {(currentUserRole === 'owner' || currentUserRole === 'admin') && (
+                  <button
+                    onClick={() => setShowAddMemberModal(true)}
+                    className="p-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors flex items-center justify-center"
+                    title="Add team member"
+                  >
+                    <UserPlus className="w-5 h-5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Team Members Section */}
+              <div className="bg-gray-900/40 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-6">
+                <div className="flex items-center gap-3 mb-6">
                   <Users className="w-5 h-5 text-purple-400" />
                   <h2 className="text-xl font-semibold text-white">Team Members</h2>
                   <span className="text-sm text-gray-400">({members.length})</span>
                 </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleRefreshMembers}
-                    disabled={isRefreshingMembers}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                    title="Refresh member list and activate pending invitations"
-                  >
-                    <RefreshCw className={`w-4 h-4 ${isRefreshingMembers ? 'animate-spin' : ''}`} />
-                    Refresh
-                  </button>
-                  {(currentUserRole === 'owner' || currentUserRole === 'admin') && (
-                    <button
-                      onClick={() => setShowAddMemberModal(true)}
-                      className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors flex items-center gap-2"
-                    >
-                      <UserPlus className="w-4 h-4" />
-                      Add Member
-                    </button>
-                  )}
-                </div>
-              </div>
               
               <div className="space-y-3">
                 {members.map((member) => (
@@ -672,6 +677,7 @@ export default function SettingsPage() {
                     </div>
                   </div>
                 ))}
+              </div>
               </div>
             </motion.div>
           )}
