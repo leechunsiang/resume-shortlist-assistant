@@ -23,6 +23,12 @@ export default function SettingsPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   
+  // Username editing state
+  const [isEditingUsername, setIsEditingUsername] = useState(false);
+  const [newUsername, setNewUsername] = useState('');
+  const [usernameError, setUsernameError] = useState<string | null>(null);
+  const [isSavingUsername, setIsSavingUsername] = useState(false);
+  
   // Organization state
   const [members, setMembers] = useState<OrganizationMember[]>([]);
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
@@ -41,6 +47,18 @@ export default function SettingsPage() {
   const [isUpdatingMember, setIsUpdatingMember] = useState(false);
   const [isDeletingMember, setIsDeletingMember] = useState(false);
   const [newRole, setNewRole] = useState<'owner' | 'admin' | 'member' | 'viewer'>('member');
+  
+  // Create organization state
+  const [showCreateOrgModal, setShowCreateOrgModal] = useState(false);
+  const [newOrgData, setNewOrgData] = useState({
+    name: '',
+    description: '',
+    website: '',
+    industry: '',
+    size: '',
+  });
+  const [createOrgError, setCreateOrgError] = useState<string | null>(null);
+  const [isCreatingOrg, setIsCreatingOrg] = useState(false);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -103,6 +121,93 @@ export default function SettingsPage() {
       setDeleteError(errorMessage);
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleEditUsername = () => {
+    setNewUsername(user?.user_metadata?.username || '');
+    setIsEditingUsername(true);
+    setUsernameError(null);
+  };
+
+  const handleCancelEditUsername = () => {
+    setIsEditingUsername(false);
+    setNewUsername('');
+    setUsernameError(null);
+  };
+
+  const handleSaveUsername = async () => {
+    if (!newUsername.trim()) {
+      setUsernameError('Username cannot be empty');
+      return;
+    }
+
+    // Validate username format (alphanumeric, underscores, hyphens, 3-20 chars)
+    const usernameRegex = /^[a-zA-Z0-9_-]{3,20}$/;
+    if (!usernameRegex.test(newUsername)) {
+      setUsernameError('Username must be 3-20 characters and contain only letters, numbers, underscores, or hyphens');
+      return;
+    }
+
+    setIsSavingUsername(true);
+    setUsernameError(null);
+
+    try {
+      const updatedUser = await authApi.updateUserMetadata({ username: newUsername });
+      setUser(updatedUser);
+      setIsEditingUsername(false);
+      setNewUsername('');
+    } catch (error: any) {
+      console.error('Error updating username:', error);
+      setUsernameError(error?.message || 'Failed to update username. Please try again.');
+    } finally {
+      setIsSavingUsername(false);
+    }
+  };
+
+  const handleCreateOrganization = async () => {
+    if (!newOrgData.name.trim()) {
+      setCreateOrgError('Organization name is required');
+      return;
+    }
+
+    setIsCreatingOrg(true);
+    setCreateOrgError(null);
+
+    try {
+      if (!user?.id) {
+        throw new Error('User not found');
+      }
+
+      const newOrg = await organizationsApi.create({
+        name: newOrgData.name.trim(),
+        description: newOrgData.description.trim() || undefined,
+        website: newOrgData.website.trim() || undefined,
+        industry: newOrgData.industry.trim() || undefined,
+        size: newOrgData.size.trim() || undefined,
+        created_by: user.id,
+      });
+
+      // Refresh organizations to include the new one
+      await refreshOrganizations();
+
+      // Reset form and close modal
+      setNewOrgData({
+        name: '',
+        description: '',
+        website: '',
+        industry: '',
+        size: '',
+      });
+      setShowCreateOrgModal(false);
+
+      // Optional: Switch to the newly created organization
+      // Note: refreshOrganizations will update the context
+    } catch (error: any) {
+      console.error('Error creating organization:', error);
+      setCreateOrgError(error?.message || 'Failed to create organization. Please try again.');
+    } finally {
+      setIsCreatingOrg(false);
     }
   };
 
@@ -452,9 +557,56 @@ export default function SettingsPage() {
                   {user?.user_metadata?.username && (
                     <div>
                       <label className="text-sm text-gray-400 block mb-1">Username</label>
-                      <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg px-4 py-3">
-                        <span className="text-white">@{user.user_metadata.username}</span>
-                      </div>
+                      {isEditingUsername ? (
+                        <div className="space-y-2">
+                          <div className="flex gap-2">
+                            <div className="flex-1">
+                              <div className="flex items-center bg-gray-800/50 border border-gray-700/50 rounded-lg px-4 py-3">
+                                <span className="text-gray-400">@</span>
+                                <input
+                                  type="text"
+                                  value={newUsername}
+                                  onChange={(e) => setNewUsername(e.target.value)}
+                                  className="flex-1 bg-transparent border-none outline-none text-white ml-1"
+                                  placeholder="Enter username"
+                                  autoFocus
+                                  disabled={isSavingUsername}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                          {usernameError && (
+                            <p className="text-sm text-red-400">{usernameError}</p>
+                          )}
+                          <div className="flex gap-2">
+                            <button
+                              onClick={handleSaveUsername}
+                              disabled={isSavingUsername}
+                              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-600/50 text-white text-sm font-medium rounded-lg transition-colors"
+                            >
+                              {isSavingUsername ? 'Saving...' : 'Save'}
+                            </button>
+                            <button
+                              onClick={handleCancelEditUsername}
+                              disabled={isSavingUsername}
+                              className="px-4 py-2 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-700/50 text-white text-sm font-medium rounded-lg transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between bg-gray-800/50 border border-gray-700/50 rounded-lg px-4 py-3">
+                          <span className="text-white">@{user.user_metadata.username}</span>
+                          <button
+                            onClick={handleEditUsername}
+                            className="text-emerald-400 hover:text-emerald-300 transition-colors"
+                            title="Edit username"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -520,19 +672,44 @@ export default function SettingsPage() {
           )}
 
           {/* Organization Tab */}
-          {activeTab === 'organization' && currentOrganization && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="bg-gray-900/40 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-6"
-            >
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <Building2 className="w-5 h-5 text-indigo-400" />
-                  <h2 className="text-xl font-semibold text-white">Organization Details</h2>
+          {activeTab === 'organization' && (
+            <>
+              {/* Create New Organization Section */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="bg-emerald-900/20 backdrop-blur-xl border border-emerald-500/50 rounded-2xl p-6 mb-6"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-1">Create New Organization</h3>
+                    <p className="text-sm text-gray-400">Add another organization to your account</p>
+                  </div>
+                  <button
+                    onClick={() => setShowCreateOrgModal(true)}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors flex items-center gap-2"
+                  >
+                    <Building2 className="w-4 h-4" />
+                    New Organization
+                  </button>
                 </div>
-              </div>
+              </motion.div>
+
+              {/* Current Organization Details */}
+              {currentOrganization && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.1 }}
+                  className="bg-gray-900/40 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-6"
+                >
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                      <Building2 className="w-5 h-5 text-indigo-400" />
+                      <h2 className="text-xl font-semibold text-white">Current Organization Details</h2>
+                    </div>
+                  </div>
               
               <div className="space-y-4">
                 <div>
@@ -603,6 +780,8 @@ export default function SettingsPage() {
                 </div>
               </div>
             </motion.div>
+              )}
+            </>
           )}
 
           {/* Team Tab */}
@@ -1080,6 +1259,145 @@ export default function SettingsPage() {
             {/* RBAC Matrix Component */}
             <RBACMatrix />
           </div>
+        </motion.div>
+      )}
+
+      {/* Create Organization Modal */}
+      {showCreateOrgModal && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+          onClick={() => setShowCreateOrgModal(false)}
+        >
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+            className="bg-gray-900 border border-emerald-500/50 rounded-2xl p-6 max-w-md w-full shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-emerald-400" />
+                <h3 className="text-xl font-semibold text-white">Create New Organization</h3>
+              </div>
+              <button
+                onClick={() => setShowCreateOrgModal(false)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-4 mb-4">
+              <div>
+                <label className="text-sm text-gray-400 block mb-2">
+                  Organization Name <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={newOrgData.name}
+                  onChange={(e) => setNewOrgData({ ...newOrgData, name: e.target.value })}
+                  placeholder="Enter organization name"
+                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm text-gray-400 block mb-2">
+                  Description
+                </label>
+                <textarea
+                  value={newOrgData.description}
+                  onChange={(e) => setNewOrgData({ ...newOrgData, description: e.target.value })}
+                  placeholder="Brief description of your organization"
+                  rows={3}
+                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 resize-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm text-gray-400 block mb-2">
+                  Website
+                </label>
+                <input
+                  type="url"
+                  value={newOrgData.website}
+                  onChange={(e) => setNewOrgData({ ...newOrgData, website: e.target.value })}
+                  placeholder="https://example.com"
+                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm text-gray-400 block mb-2">
+                    Industry
+                  </label>
+                  <input
+                    type="text"
+                    value={newOrgData.industry}
+                    onChange={(e) => setNewOrgData({ ...newOrgData, industry: e.target.value })}
+                    placeholder="e.g. Technology"
+                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm text-gray-400 block mb-2">
+                    Size
+                  </label>
+                  <select
+                    value={newOrgData.size}
+                    onChange={(e) => setNewOrgData({ ...newOrgData, size: e.target.value })}
+                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-emerald-500"
+                  >
+                    <option value="">Select size</option>
+                    <option value="1-10">1-10 employees</option>
+                    <option value="11-50">11-50 employees</option>
+                    <option value="51-200">51-200 employees</option>
+                    <option value="201-500">201-500 employees</option>
+                    <option value="501-1000">501-1000 employees</option>
+                    <option value="1000+">1000+ employees</option>
+                  </select>
+                </div>
+              </div>
+
+              {createOrgError && (
+                <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-3">
+                  <p className="text-sm text-red-400">{createOrgError}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowCreateOrgModal(false)}
+                className="flex-1 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white font-medium rounded-lg transition-colors"
+                disabled={isCreatingOrg}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateOrganization}
+                disabled={isCreatingOrg || !newOrgData.name.trim()}
+                className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isCreatingOrg ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  'Create Organization'
+                )}
+              </button>
+            </div>
+          </motion.div>
         </motion.div>
       )}
     </DashboardLayout>

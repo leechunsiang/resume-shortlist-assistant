@@ -11,15 +11,16 @@ import { useRipple, RippleEffect } from '@/components/ripple-effect';
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import { AnimatedCounter, AnimatedProgressBar, PulseStatusBadge } from '@/components/animated-counter';
 import { AuthModal } from '@/components/auth-modal';
+import { useOrganization } from '@/contexts/organization-context';
 
 export default function Home() {
   const router = useRouter();
+  const { currentOrganization, loading: orgLoading } = useOrganization();
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [jobs, setJobs] = useState<JobListing[]>([]);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [userFirstName, setUserFirstName] = useState<string>('');
   const [isAnimationComplete, setIsAnimationComplete] = useState(false);
   const [headerAnimationComplete, setHeaderAnimationComplete] = useState(false);
@@ -86,13 +87,13 @@ export default function Home() {
         setLoading(true);
         setError(null);
         
-        // Get current user and their organization
+        // Get current user
         let user;
         try {
           user = await authApi.getCurrentUser();
         } catch (authError) {
           // Authentication failed - user not logged in
-          console.log('User not authenticated');
+          console.log('[DASHBOARD] User not authenticated');
           setLoading(false);
           setError('auth');
           return;
@@ -108,35 +109,51 @@ export default function Home() {
         const firstName = user.user_metadata?.first_name || user.email?.split('@')[0] || 'User';
         setUserFirstName(firstName);
 
-        const orgs = await organizationsApi.getUserOrganizations(user.id);
-        if (!orgs || orgs.length === 0) {
+        // Wait for organization context to load
+        if (orgLoading) {
+          console.log('[DASHBOARD] Waiting for organization context...');
+          setLoading(false);
+          return;
+        }
+
+        // Check if we have a current organization
+        if (!currentOrganization) {
+          console.log('[DASHBOARD] No organization selected, redirecting to setup');
           router.push('/organization/setup');
           return;
         }
 
-        const orgId = orgs[0].id;
-        setOrganizationId(orgId);
+        console.log('[DASHBOARD] Fetching data for organization:', currentOrganization.name, currentOrganization.id);
         
-        // Fetch dashboard stats, recent candidates, and active jobs for this organization
+        // Fetch dashboard stats, recent candidates, and active jobs for the selected organization
         const [statsData, candidatesData, jobsData] = await Promise.all([
-          dashboardApi.getStats(orgId),
-          candidatesApi.getRecent(orgId, 5),
-          jobsApi.getAll(orgId)
+          dashboardApi.getStats(currentOrganization.id),
+          candidatesApi.getRecent(currentOrganization.id, 5),
+          jobsApi.getAll(currentOrganization.id)
         ]);
         
         setStats(statsData);
         setCandidates(candidatesData);
         setJobs(jobsData.filter(job => job.status === 'active'));
       } catch (err) {
-        console.error('Error fetching data:', err);
+        console.error('[DASHBOARD] Error fetching data:', err);
         setError('database');
       } finally {
         setLoading(false);
       }
     }
 
-    fetchData();
-  }, [router]);
+    // Always check auth first, even if no organization
+    if (!orgLoading) {
+      if (currentOrganization) {
+        fetchData();
+      } else {
+        // No organization but org context finished loading - check auth anyway
+        fetchData();
+      }
+    }
+  }, [currentOrganization?.id, orgLoading]); // Depend on both ID and loading state
+
 
   const getInitials = (firstName: string, lastName: string) => {
     return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();

@@ -95,6 +95,7 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
     const { data: { subscription } } = authApi.onAuthStateChange((event, session) => {
       console.log('[ORG CONTEXT] Auth event:', event);
       
+      // Only refetch on actual sign in, ignore token refreshes
       if (event === 'SIGNED_IN') {
         hasInitializedRef.current = false; // Reset to allow activation check
         fetchOrganizations();
@@ -107,6 +108,7 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
         hasInitializedRef.current = false;
         setLoading(false);
       }
+      // Ignore TOKEN_REFRESHED, INITIAL_SESSION, and other events
     });
 
     return () => {

@@ -111,6 +111,7 @@ export default function JobListings() {
       // Wait for organization context to load
       if (orgLoading) {
         console.log('[JOB LISTINGS] Waiting for organization context...');
+        setLoading(false);
         return;
       }
 
@@ -156,8 +157,12 @@ export default function JobListings() {
       }
     }
 
-    fetchData();
-  }, [router, currentOrganization, orgLoading]);
+    // Only fetch if we have a current organization and context is not loading
+    if (!orgLoading && currentOrganization) {
+      fetchData();
+    }
+  }, [currentOrganization?.id]); // Only depend on organization ID
+
 
   const activeJobs = jobs.filter(job => job.status === 'active');
   const draftJobs = jobs.filter(job => job.status === 'draft');
@@ -1638,8 +1643,17 @@ export default function JobListings() {
             </div>
 
             <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 mb-6">
-              <p className="text-gray-300 text-sm leading-relaxed">
-                Are you sure you want to delete this job listing? This will permanently remove the job and all associated applications from the system.
+              <p className="text-gray-300 text-sm leading-relaxed mb-2">
+                Are you sure you want to delete this job listing? This action will:
+              </p>
+              <ul className="text-gray-300 text-sm space-y-1 ml-4 list-disc">
+                <li>Permanently remove the job listing</li>
+                <li>Delete all applications to this job</li>
+                <li>Delete candidates who only applied to this job</li>
+                <li>Keep candidates who also applied to other jobs</li>
+              </ul>
+              <p className="text-red-400 text-xs mt-3 font-medium">
+                ⚠️ This action cannot be undone
               </p>
             </div>
 

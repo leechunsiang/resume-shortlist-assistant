@@ -92,6 +92,7 @@ export default function CandidatesPage() {
       // Wait for organization context to load
       if (orgLoading) {
         console.log('[CANDIDATES] Waiting for organization context...');
+        setLoading(false);
         return;
       }
 
@@ -153,8 +154,12 @@ export default function CandidatesPage() {
       }
     }
 
-    fetchCandidates();
-  }, [router, currentOrganization, orgLoading]);
+    // Only fetch if we have a current organization and context is not loading
+    if (!orgLoading && currentOrganization) {
+      fetchCandidates();
+    }
+  }, [currentOrganization?.id]); // Only depend on organization ID
+
 
   // Fetch job applications for selected candidate
   const fetchCandidateApplications = async (candidateId: string) => {

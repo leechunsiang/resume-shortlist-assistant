@@ -457,7 +457,60 @@ export const jobsApi = {
 
   // Delete job
   delete: async (id: string) => {
-    console.log('Attempting to delete job with id:', id);
+    console.log('[JOBS API] Attempting to delete job with id:', id);
+    
+    // First, find all candidates that applied ONLY to this job
+    const { data: applications, error: appsError } = await supabase
+      .from('job_applications')
+      .select('candidate_id')
+      .eq('job_id', id);
+    
+    if (appsError) {
+      console.error('[JOBS API] Error fetching job applications:', appsError);
+      throw appsError;
+    }
+
+    console.log('[JOBS API] Found', applications?.length || 0, 'applications for this job');
+
+    // Get candidate IDs from this job
+    const candidateIds = applications?.map(app => app.candidate_id) || [];
+
+    if (candidateIds.length > 0) {
+      // For each candidate, check if they have applications to other jobs
+      const { data: otherApplications, error: otherAppsError } = await supabase
+        .from('job_applications')
+        .select('candidate_id')
+        .in('candidate_id', candidateIds)
+        .neq('job_id', id); // Applications to OTHER jobs
+
+      if (otherAppsError) {
+        console.error('[JOBS API] Error checking other applications:', otherAppsError);
+        throw otherAppsError;
+      }
+
+      // Find candidates that ONLY applied to this job (no other applications)
+      const candidatesWithOtherJobs = new Set(otherApplications?.map(app => app.candidate_id) || []);
+      const candidatesToDelete = candidateIds.filter(id => !candidatesWithOtherJobs.has(id));
+
+      console.log('[JOBS API] Candidates to delete:', candidatesToDelete.length, 'out of', candidateIds.length);
+
+      // Delete candidates that only applied to this job
+      if (candidatesToDelete.length > 0) {
+        const { error: deleteCandidatesError } = await supabase
+          .from('candidates')
+          .delete()
+          .in('id', candidatesToDelete);
+
+        if (deleteCandidatesError) {
+          console.error('[JOBS API] Error deleting candidates:', deleteCandidatesError);
+          throw deleteCandidatesError;
+        }
+
+        console.log('[JOBS API] Deleted', candidatesToDelete.length, 'candidates');
+      }
+    }
+
+    // Now delete the job (job_applications will be auto-deleted via CASCADE)
     const { error, data } = await supabase
       .from('job_listings')
       .delete()
@@ -465,10 +518,11 @@ export const jobsApi = {
       .select();
     
     if (error) {
-      console.error('Supabase delete error:', error);
+      console.error('[JOBS API] Supabase delete error:', error);
       throw error;
     }
-    console.log('Delete result:', data);
+    
+    console.log('[JOBS API] Job deleted successfully. Deleted data:', data);
     return data;
   }
 };
@@ -568,6 +622,15 @@ export const authApi = {
   signOut: async () => {
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
+  },
+
+  // Update user metadata (username, name, etc.)
+  updateUserMetadata: async (updates: { username?: string; first_name?: string; last_name?: string }) => {
+    const { data, error } = await supabase.auth.updateUser({
+      data: updates
+    });
+    if (error) throw error;
+    return data.user;
   },
 
   // Check if user is authenticated
