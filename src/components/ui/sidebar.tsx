@@ -5,7 +5,6 @@ import Link, { LinkProps } from "next/link";
 import React, { useState, createContext, useContext } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Menu, X } from "lucide-react";
-import { usePathname } from "next/navigation";
 
 interface Links {
   label: string;
@@ -173,8 +172,6 @@ export const SidebarLink = ({
   props?: LinkProps;
 }) => {
   const { open, animate } = useSidebar();
-  const pathname = usePathname();
-  const isActive = pathname === link.href || (link.href !== '/' && pathname.startsWith(link.href));
   
   if (disabled) {
     return (
@@ -207,11 +204,7 @@ export const SidebarLink = ({
     <Link
       href={link.href}
       className={cn(
-        "flex items-center group/sidebar py-2.5 px-2 rounded-lg transition-colors",
-        open ? "justify-start" : "justify-center",
-        isActive 
-          ? "bg-white/10 border border-white/30" 
-          : "hover:bg-gray-800",
+        "flex items-center justify-start gap-3 group/sidebar py-2.5 px-2 rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-700/50 transition-colors",
         className
       )}
       {...props}
@@ -220,17 +213,14 @@ export const SidebarLink = ({
       <motion.span
         initial={false}
         animate={{
+          width: animate ? (open ? "auto" : 0) : "auto",
           opacity: animate ? (open ? 1 : 0) : 1,
         }}
         transition={{
-          duration: 0.3,
-          ease: "easeInOut",
+          duration: 0.2,
+          ease: [0.4, 0, 0.2, 1],
         }}
-        className={cn(
-          "text-sm font-medium whitespace-nowrap ml-3",
-          !open && "hidden",
-          isActive ? "text-white" : "text-gray-300 group-hover/sidebar:text-white"
-        )}
+        className="text-gray-300 text-sm font-medium whitespace-nowrap overflow-hidden"
       >
         {link.label}
       </motion.span>
