@@ -13,6 +13,7 @@ import { AnimatedCounter, AnimatedProgressBar, PulseStatusBadge } from '@/compon
 import { AuthModal } from '@/components/auth-modal';
 import { useOrganization } from '@/contexts/organization-context';
 import { FlipWords } from '@/components/ui/flip-words';
+import { OrganizationSwitcher } from '@/components/organization-switcher';
 
 export default function Home() {
   const router = useRouter();
@@ -185,45 +186,53 @@ export default function Home() {
       <div className="flex-1 overflow-auto">
         {/* Header */}
         <header className="bg-transparent px-4 md:px-8 py-4 md:py-6">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-white mb-1 min-h-[2.5rem]">
-              {userFirstName ? (
-                <TextType 
-                  text={`Welcome back, ${userFirstName}!`}
-                  speed={50}
-                  cursor={true}
-                  cursorChar="|"
-                  onComplete={() => setHeaderAnimationComplete(true)}
-                />
-              ) : error === 'auth' ? (
-                <TextType 
-                  text="Welcome to Resume Shortlist Assistant!"
-                  speed={50}
-                  cursor={true}
-                  cursorChar="|"
-                  onComplete={() => setHeaderAnimationComplete(true)}
-                />
-              ) : null}
-            </h1>
-            <p className="text-sm md:text-base text-gray-400 min-h-[1.5rem]">
-              {error === 'auth' ? (
-                headerAnimationComplete ? (
+          <div className="flex justify-between items-start mb-4">
+            <div className="flex-1">
+              <h1 className="text-2xl md:text-3xl font-bold text-white mb-1 min-h-[2.5rem]">
+                {userFirstName ? (
                   <TextType 
-                    text="Automate Resume Shortlisting with Clarity and Control."
+                    text={`Welcome back, ${userFirstName}!`}
+                    speed={50}
+                    cursor={true}
+                    cursorChar="|"
+                    onComplete={() => setHeaderAnimationComplete(true)}
+                  />
+                ) : error === 'auth' ? (
+                  <TextType 
+                    text="Welcome to Resume Shortlist Assistant!"
+                    speed={50}
+                    cursor={true}
+                    cursorChar="|"
+                    onComplete={() => setHeaderAnimationComplete(true)}
+                  />
+                ) : null}
+              </h1>
+              <p className="text-sm md:text-base text-gray-400 min-h-[1.5rem]">
+                {error === 'auth' ? (
+                  headerAnimationComplete ? (
+                    <TextType 
+                      text="Automate Resume Shortlisting with Clarity and Control."
+                      speed={40}
+                      cursor={true}
+                      cursorChar="|"
+                    />
+                  ) : null
+                ) : userFirstName && headerAnimationComplete ? (
+                  <TextType 
+                    text="Overview of your recruitment pipeline"
                     speed={40}
                     cursor={true}
                     cursorChar="|"
                   />
-                ) : null
-              ) : userFirstName && headerAnimationComplete ? (
-                <TextType 
-                  text="Overview of your recruitment pipeline"
-                  speed={40}
-                  cursor={true}
-                  cursorChar="|"
-                />
-              ) : null}
-            </p>
+                ) : null}
+              </p>
+            </div>
+            {/* Organization Switcher - Only show when logged in */}
+            {!error && userFirstName && (
+              <div className="ml-4">
+                <OrganizationSwitcher />
+              </div>
+            )}
           </div>
         </header>
 

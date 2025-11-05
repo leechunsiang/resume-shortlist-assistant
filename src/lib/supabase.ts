@@ -28,6 +28,7 @@ export interface Organization {
   created_by: string;
   created_at: string;
   updated_at: string;
+  role?: 'owner' | 'admin' | 'member' | 'viewer'; // User's role in this organization
 }
 
 export interface OrganizationMember {
@@ -162,7 +163,7 @@ export const organizationsApi = {
       .eq('status', 'active');
     
     if (error) throw error;
-    return data.map(m => m.organizations) as Organization[];
+    return data.map(m => ({ ...m.organizations, role: m.role })) as Organization[];
   },
 
   // Update organization
