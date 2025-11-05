@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { candidatesApi, dashboardApi, organizationsApi, authApi, jobsApi, type Candidate, type DashboardStats, type JobListing } from '@/lib/supabase';
 import { DashboardLayout } from '@/components/dashboard-layout';
 import { useRouter } from 'next/navigation';
-import { Briefcase, Users, Clock, TrendingUp, ArrowRight, MapPin, Calendar, Sparkles } from 'lucide-react';
+import { Briefcase, Users, Clock, TrendingUp, ArrowRight, MapPin, Calendar, Sparkles, Activity, Eye, Edit, Trash2, UserPlus } from 'lucide-react';
 import AnimatedList from '@/components/animated-list';
 import TextType from '@/components/text-type';
 import { useRipple, RippleEffect } from '@/components/ripple-effect';
@@ -14,6 +14,20 @@ import { AuthModal } from '@/components/auth-modal';
 import { useOrganization } from '@/contexts/organization-context';
 import { FlipWords } from '@/components/ui/flip-words';
 import { OrganizationSwitcher } from '@/components/organization-switcher';
+import { getAuditLogs } from '@/lib/audit';
+
+interface AuditLog {
+  id: string;
+  user_id: string;
+  organization_id: string;
+  action: string;
+  resource_type: string;
+  resource_id?: string;
+  details?: any;
+  ip_address?: string;
+  user_agent?: string;
+  created_at: string;
+}
 
 export default function Home() {
   const router = useRouter();
@@ -27,6 +41,8 @@ export default function Home() {
   const [isAnimationComplete, setIsAnimationComplete] = useState(false);
   const [headerAnimationComplete, setHeaderAnimationComplete] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [recentActivities, setRecentActivities] = useState<AuditLog[]>([]);
+  const [pendingReviewCandidates, setPendingReviewCandidates] = useState<Candidate[]>([]);
   
   // Ripple effects for each card
   const candidatesRipple = useRipple();
@@ -127,16 +143,23 @@ export default function Home() {
 
         console.log('[DASHBOARD] Fetching data for organization:', currentOrganization.name, currentOrganization.id);
         
-        // Fetch dashboard stats, recent candidates, and active jobs for the selected organization
-        const [statsData, candidatesData, jobsData] = await Promise.all([
+        // Fetch dashboard stats, recent candidates, active jobs, and recent activities
+        const [statsData, candidatesData, jobsData, activitiesData] = await Promise.all([
           dashboardApi.getStats(currentOrganization.id),
           candidatesApi.getRecent(currentOrganization.id, 5),
-          jobsApi.getAll(currentOrganization.id)
+          jobsApi.getAll(currentOrganization.id),
+          getAuditLogs(currentOrganization.id, { limit: 10 })
         ]);
         
         setStats(statsData);
         setCandidates(candidatesData);
         setJobs(jobsData.filter(job => job.status === 'active'));
+        setRecentActivities(activitiesData || []);
+        
+        // Get pending review candidates (status = 'pending')
+        const allCandidates = await candidatesApi.getAll(currentOrganization.id);
+        const pendingCandidates = allCandidates.filter((c: Candidate) => c.status === 'pending').slice(0, 5);
+        setPendingReviewCandidates(pendingCandidates);
       } catch (err) {
         console.error('[DASHBOARD] Error fetching data:', err);
         setError('database');
@@ -178,6 +201,58 @@ export default function Home() {
 
   const getStatusLabel = (status: string) => {
     return status.charAt(0).toUpperCase() + status.slice(1);
+  };
+
+  const getActivityIcon = (action: string) => {
+    switch (action) {
+      case 'create':
+        return <UserPlus className="w-4 h-4" />;
+      case 'update':
+      case 'edit':
+        return <Edit className="w-4 h-4" />;
+      case 'delete':
+        return <Trash2 className="w-4 h-4" />;
+      case 'view':
+        return <Eye className="w-4 h-4" />;
+      default:
+        return <Activity className="w-4 h-4" />;
+    }
+  };
+
+  const getActivityColor = (action: string) => {
+    switch (action) {
+      case 'create':
+        return 'text-emerald-400 bg-emerald-500/20 border-emerald-500/30';
+      case 'update':
+      case 'edit':
+        return 'text-blue-400 bg-blue-500/20 border-blue-500/30';
+      case 'delete':
+        return 'text-red-400 bg-red-500/20 border-red-500/30';
+      case 'view':
+        return 'text-gray-400 bg-gray-500/20 border-gray-500/30';
+      default:
+        return 'text-purple-400 bg-purple-500/20 border-purple-500/30';
+    }
+  };
+
+  const formatActivityMessage = (activity: AuditLog) => {
+    const action = activity.action;
+    const resourceType = activity.resource_type;
+    return `${action.charAt(0).toUpperCase() + action.slice(1)} ${resourceType}`;
+  };
+
+  const getTimeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    
+    if (seconds < 60) return 'Just now';
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
   };
 
   return (
@@ -347,57 +422,234 @@ export default function Home() {
             </div>
           ) : error !== 'auth' ? (
             <>
-              {/* Bento Box Grid Layout - Responsive */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 lg:auto-rows-fr gap-4 md:gap-6 lg:h-[calc(100vh-14rem)]">
+              {/* Dashboard Grid Layout - Responsive CSS Grid with Named Areas */}
+              <div 
+                className="dashboard-grid gap-4"
+                style={{
+                  display: 'grid',
+                  gap: '1rem',
+                }}
+              >
+                <style jsx>{`
+                  .dashboard-grid {
+                    /* Mobile: Single column stack */
+                    grid-template-columns: 1fr;
+                    grid-template-rows: auto;
+                    grid-template-areas:
+                      "box-1"
+                      "box-2"
+                      "box-5";
+                  }
+
+                  /* Tablet: 2 columns */
+                  @media (min-width: 768px) {
+                    .dashboard-grid {
+                      grid-template-columns: 1fr 1fr;
+                      grid-template-rows: auto auto;
+                      grid-template-areas:
+                        "box-1 box-2"
+                        "box-1 box-5";
+                    }
+                  }
+
+                  /* Desktop: 4 columns */
+                  @media (min-width: 1024px) {
+                    .dashboard-grid {
+                      grid-template-columns: 200px 200px 1fr 1fr;
+                      grid-template-rows: 200px 200px 200px 200px;
+                      grid-template-areas:
+                        "box-1 box-1 box-2 box-5"
+                        "box-1 box-1 box-2 box-5"
+                        "box-1 box-1 box-2 box-5"
+                        "box-1 box-1 box-2 box-5";
+                    }
+                  }
+
+                  /* Large Desktop: Enhanced layout */
+                  @media (min-width: 1280px) {
+                    .dashboard-grid {
+                      grid-template-columns: 300px 300px 1fr 1fr;
+                      grid-template-rows: 200px 1fr;
+                      grid-template-areas:
+                        "box-1 box-1 box-2 box-5"
+                        "box-1 box-1 box-2 box-5";
+                    }
+                  }
+                `}</style>
                 
-                {/* Top Left - Total Candidates (Small) */}
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.1 }}
-                  onClick={(e) => {
-                    candidatesRipple.addRipple(e);
-                    router.push('/candidates');
-                  }}
-                  className="bg-gradient-to-br from-emerald-500/20 to-emerald-700/20 backdrop-blur-xl border border-emerald-500/30 rounded-2xl p-6 lg:p-8 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300 ease-out min-h-[140px] flex flex-col justify-center shadow-lg shadow-emerald-500/10 hover:shadow-2xl hover:shadow-emerald-500/30 hover:border-emerald-400/60 cursor-pointer"
-                >
-                  <RippleEffect ripples={candidatesRipple.ripples} color="rgba(16, 185, 129, 0.4)" />
-                  <div className="absolute inset-0 bg-gradient-to-br from-emerald-400/5 via-transparent to-transparent"></div>
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-400/10 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-emerald-400/20 transition-all duration-300"></div>
-                  <Users className="w-8 h-8 lg:w-10 lg:h-10 text-emerald-300 mb-4 relative z-10 drop-shadow-lg group-hover:scale-110 transition-transform duration-300" />
-                  <h3 className="text-4xl lg:text-5xl font-bold text-white mb-2 relative z-10 drop-shadow-md">
-                    <AnimatedCounter value={stats?.total_candidates || 0} duration={1.5} delay={0.2} />
-                  </h3>
-                  <p className="text-emerald-200 text-sm lg:text-base font-medium relative z-10">Total Candidates</p>
-                </motion.div>
+                {/* Box 1: Stats Cards + Active Jobs */}
+                <div className="space-y-4" style={{ gridArea: 'box-1' }}>
+                  {/* Stats Cards (2x2 Grid) */}
+                  <div className="grid grid-cols-2 gap-3" style={{ maxWidth: '600px' }}>
+                    
+                    {/* Total Candidates */}
+                    <motion.div 
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.5, delay: 0.1 }}
+                      onClick={(e) => {
+                        candidatesRipple.addRipple(e);
+                        router.push('/candidates');
+                      }}
+                      className="bg-gradient-to-br from-emerald-500/20 to-emerald-700/20 backdrop-blur-xl border border-emerald-500/30 rounded-xl p-3 md:p-4 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300 ease-out flex flex-col justify-center shadow-lg shadow-emerald-500/10 hover:shadow-xl hover:shadow-emerald-500/30 hover:border-emerald-400/60 cursor-pointer"
+                    >
+                      <RippleEffect ripples={candidatesRipple.ripples} color="rgba(16, 185, 129, 0.4)" />
+                      <div className="absolute inset-0 bg-gradient-to-br from-emerald-400/5 via-transparent to-transparent"></div>
+                      <div className="absolute top-0 right-0 w-20 h-20 bg-emerald-400/10 rounded-full -mr-10 -mt-10 blur-xl group-hover:bg-emerald-400/20 transition-all duration-300"></div>
+                      <Users className="w-5 h-5 text-emerald-300 mb-1.5 relative z-10 drop-shadow-lg group-hover:scale-110 transition-transform duration-300" />
+                      <h3 className="text-2xl font-bold text-white mb-0.5 relative z-10 drop-shadow-md">
+                        <AnimatedCounter value={stats?.total_candidates || 0} duration={1.5} delay={0.2} />
+                      </h3>
+                      <p className="text-emerald-200 text-xs font-medium relative z-10">Total Candidates</p>
+                    </motion.div>
 
-                {/* Top Center-Left - Active Jobs Count (Small) */}
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.2 }}
-                  onClick={(e) => {
-                    jobsRipple.addRipple(e);
-                    router.push('/job-listings');
-                  }}
-                  className="bg-gradient-to-br from-blue-500/20 to-blue-700/20 backdrop-blur-xl border border-blue-500/30 rounded-2xl p-6 lg:p-8 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300 ease-out min-h-[140px] flex flex-col justify-center shadow-lg shadow-blue-500/10 hover:shadow-2xl hover:shadow-blue-500/30 hover:border-blue-400/60 cursor-pointer"
-                >
-                  <RippleEffect ripples={jobsRipple.ripples} color="rgba(59, 130, 246, 0.4)" />
-                  <div className="absolute inset-0 bg-gradient-to-br from-blue-400/5 via-transparent to-transparent"></div>
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-blue-400/10 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-blue-400/20 transition-all duration-300"></div>
-                  <Briefcase className="w-8 h-8 lg:w-10 lg:h-10 text-blue-300 mb-4 relative z-10 drop-shadow-lg group-hover:scale-110 transition-transform duration-300" />
-                  <h3 className="text-4xl lg:text-5xl font-bold text-white mb-2 relative z-10 drop-shadow-md">
-                    <AnimatedCounter value={stats?.active_jobs || 0} duration={1.5} delay={0.3} />
-                  </h3>
-                  <p className="text-blue-200 text-sm lg:text-base font-medium relative z-10">Active Jobs</p>
-                </motion.div>
+                  {/* Shortlisted */}
+                  <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: 0.2 }}
+                    onClick={(e) => {
+                      shortlistedRipple.addRipple(e);
+                    }}
+                    className="bg-gradient-to-br from-purple-500/20 to-purple-700/20 backdrop-blur-xl border border-purple-500/30 rounded-xl p-3 md:p-4 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300 ease-out flex flex-col justify-center shadow-lg shadow-purple-500/10 hover:shadow-xl hover:shadow-purple-500/30 hover:border-purple-400/60 cursor-pointer"
+                  >
+                    <RippleEffect ripples={shortlistedRipple.ripples} color="rgba(168, 85, 247, 0.4)" />
+                    <div className="absolute inset-0 bg-gradient-to-br from-purple-400/5 via-transparent to-transparent"></div>
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-purple-400/10 rounded-full -mr-10 -mt-10 blur-xl group-hover:bg-purple-400/20 transition-all duration-300"></div>
+                    <Clock className="w-5 h-5 text-purple-300 mb-1.5 relative z-10 drop-shadow-lg group-hover:scale-110 transition-transform duration-300" />
+                    <h3 className="text-2xl font-bold text-white mb-0.5 relative z-10 drop-shadow-md">
+                      <AnimatedCounter value={stats?.shortlisted_count || 0} duration={1.5} delay={0.3} />
+                    </h3>
+                    <p className="text-purple-200 text-xs font-medium relative z-10">Shortlisted</p>
+                  </motion.div>
 
-                {/* Top Right - Recent Candidates (Large, spans 2 columns on desktop) */}
+                  {/* Active Jobs */}
+                  <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: 0.3 }}
+                    onClick={(e) => {
+                      jobsRipple.addRipple(e);
+                      router.push('/job-listings');
+                    }}
+                    className="bg-gradient-to-br from-blue-500/20 to-blue-700/20 backdrop-blur-xl border border-blue-500/30 rounded-xl p-3 md:p-4 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300 ease-out flex flex-col justify-center shadow-lg shadow-blue-500/10 hover:shadow-xl hover:shadow-blue-500/30 hover:border-blue-400/60 cursor-pointer"
+                  >
+                    <RippleEffect ripples={jobsRipple.ripples} color="rgba(59, 130, 246, 0.4)" />
+                    <div className="absolute inset-0 bg-gradient-to-br from-blue-400/5 via-transparent to-transparent"></div>
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-blue-400/10 rounded-full -mr-10 -mt-10 blur-xl group-hover:bg-blue-400/20 transition-all duration-300"></div>
+                    <Briefcase className="w-5 h-5 text-blue-300 mb-1.5 relative z-10 drop-shadow-lg group-hover:scale-110 transition-transform duration-300" />
+                    <h3 className="text-2xl font-bold text-white mb-0.5 relative z-10 drop-shadow-md">
+                      <AnimatedCounter value={stats?.active_jobs || 0} duration={1.5} delay={0.4} />
+                    </h3>
+                    <p className="text-blue-200 text-xs font-medium relative z-10">Active Jobs</p>
+                  </motion.div>
+
+                  {/* Pending Review */}
+                  <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: 0.4 }}
+                    onClick={(e) => {
+                      successRateRipple.addRipple(e);
+                    }}
+                    className="bg-gradient-to-br from-orange-500/20 to-orange-700/20 backdrop-blur-xl border border-orange-500/30 rounded-xl p-3 md:p-4 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300 ease-out flex flex-col justify-center shadow-lg shadow-orange-500/10 hover:shadow-xl hover:shadow-orange-500/30 hover:border-orange-400/60 cursor-pointer"
+                  >
+                    <RippleEffect ripples={successRateRipple.ripples} color="rgba(249, 115, 22, 0.4)" />
+                    <div className="absolute inset-0 bg-gradient-to-br from-orange-400/5 via-transparent to-transparent"></div>
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-orange-400/10 rounded-full -mr-10 -mt-10 blur-xl group-hover:bg-orange-400/20 transition-all duration-300"></div>
+                    <TrendingUp className="w-5 h-5 text-orange-300 mb-1.5 relative z-10 drop-shadow-lg group-hover:scale-110 transition-transform duration-300" />
+                    <h3 className="text-2xl font-bold text-white mb-0.5 relative z-10 drop-shadow-md">
+                      <AnimatedCounter value={pendingReviewCandidates.length} duration={1.5} delay={0.5} />
+                    </h3>
+                      <p className="text-orange-200 text-xs font-medium relative z-10">Pending Review</p>
+                    </motion.div>
+                  </div>
+
+                  {/* Active Jobs List */}
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.6, delay: 0.5 }}
+                    className="bg-gray-900/40 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-6 flex flex-col min-h-[400px] shadow-2xl shadow-black/20 relative overflow-hidden"
+                    style={{ maxWidth: '600px' }}
+                  >
+                  <div className="absolute inset-0 bg-gradient-to-br from-gray-800/10 via-transparent to-gray-900/20 pointer-events-none"></div>
+                  <div className="absolute -top-24 -right-24 w-48 h-48 bg-blue-500/5 rounded-full blur-3xl"></div>
+                  <div className="flex items-center justify-between mb-6 flex-shrink-0 relative z-10">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-blue-500/20 backdrop-blur-sm rounded-lg flex items-center justify-center border border-blue-500/30 shadow-lg shadow-blue-500/10">
+                        <Briefcase className="w-5 h-5 text-blue-400 drop-shadow-lg" />
+                      </div>
+                      <h2 className="text-xl font-bold text-white drop-shadow-md">Active Jobs</h2>
+                    </div>
+                    <button
+                      onClick={() => router.push('/job-listings')}
+                      className="text-emerald-400 hover:text-emerald-300 text-sm font-medium flex items-center gap-1 transition-colors drop-shadow-md"
+                    >
+                      View All
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {jobs.length === 0 ? (
+                    <div className="flex-1 flex items-center justify-center text-center bg-black/20 backdrop-blur-sm rounded-2xl border border-gray-700/30 relative z-10">
+                      <div>
+                        <Briefcase className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+                        <p className="text-gray-400 font-medium">No active jobs</p>
+                        <p className="text-gray-500 text-sm mt-1">Create a job to start recruiting</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <AnimatedList
+                      items={jobs}
+                      renderItem={(job, index) => (
+                        <motion.div 
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.4, delay: index * 0.1 }}
+                          className="bg-gray-800/30 backdrop-blur-md border border-gray-700/40 rounded-2xl p-4 hover:bg-gray-700/40 hover:border-blue-500/50 hover:-translate-y-0.5 hover:scale-[1.01] transition-all duration-300 ease-out cursor-pointer group mb-4 shadow-lg shadow-black/10 hover:shadow-xl hover:shadow-blue-500/20 relative overflow-hidden"
+                        >
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                          <div className="flex items-start justify-between mb-2 relative z-10">
+                            <h3 className="text-white font-semibold group-hover:text-blue-400 transition-colors drop-shadow-sm">
+                              {job.title}
+                            </h3>
+                            <span className="px-2 py-1 bg-emerald-500/20 backdrop-blur-sm text-emerald-400 text-xs font-medium rounded-full border border-emerald-500/30 group-hover:scale-105 transition-transform duration-300">
+                              Active
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-4 text-sm text-gray-400 relative z-10">
+                            {job.department && (
+                              <span className="flex items-center gap-1">
+                                <Briefcase className="w-3.5 h-3.5" />
+                                {job.department}
+                              </span>
+                            )}
+                            {job.location && (
+                              <span className="flex items-center gap-1">
+                                <MapPin className="w-3.5 h-3.5" />
+                                {job.location}
+                              </span>
+                            )}
+                          </div>
+                        </motion.div>
+                      )}
+                      onItemSelect={() => router.push('/job-listings')}
+                      showGradients={true}
+                      enableArrowNavigation={false}
+                      displayScrollbar={true}
+                    />
+                  )}
+                </motion.div>
+              </div>
+
+              {/* Box 2: Recent Candidates */}
+              <div style={{ gridArea: 'box-2' }}>
                 <motion.div 
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.6, delay: 0.3 }}
-                  className="md:col-span-2 lg:col-span-2 lg:row-span-2 bg-gray-900/40 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-6 flex flex-col min-h-[400px] lg:min-h-0 lg:h-full shadow-2xl shadow-black/20 relative overflow-hidden"
+                  transition={{ duration: 0.6, delay: 0.7 }}
+                  className="bg-gray-900/40 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-6 flex flex-col h-full shadow-2xl shadow-black/20 relative overflow-hidden"
                 >
                   <div className="absolute inset-0 bg-gradient-to-br from-gray-800/10 via-transparent to-gray-900/20 pointer-events-none"></div>
                   <div className="absolute -top-24 -right-24 w-48 h-48 bg-emerald-500/5 rounded-full blur-3xl"></div>
@@ -493,25 +745,27 @@ export default function Home() {
                     />
                   )}
                 </motion.div>
+              </div>
 
-                {/* Middle Left - Active Job Listings (Large, spans 2 columns on desktop) */}
+              {/* Box 5: Recent Activities */}
+              <div style={{ gridArea: 'box-5' }}>
                 <motion.div 
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.6, delay: 0.4 }}
-                  className="md:col-span-2 lg:col-span-2 lg:row-span-2 bg-gray-900/40 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-6 flex flex-col min-h-[400px] lg:min-h-0 lg:h-full shadow-2xl shadow-black/20 relative overflow-hidden"
+                  transition={{ duration: 0.6, delay: 0.8 }}
+                  className="bg-gray-900/40 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-6 flex flex-col h-full shadow-2xl shadow-black/20 relative overflow-hidden"
                 >
                   <div className="absolute inset-0 bg-gradient-to-br from-gray-800/10 via-transparent to-gray-900/20 pointer-events-none"></div>
-                  <div className="absolute -top-24 -right-24 w-48 h-48 bg-blue-500/5 rounded-full blur-3xl"></div>
+                  <div className="absolute -top-24 -right-24 w-48 h-48 bg-indigo-500/5 rounded-full blur-3xl"></div>
                   <div className="flex items-center justify-between mb-6 flex-shrink-0 relative z-10">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-blue-500/20 backdrop-blur-sm rounded-lg flex items-center justify-center border border-blue-500/30 shadow-lg shadow-blue-500/10">
-                        <Briefcase className="w-5 h-5 text-blue-400 drop-shadow-lg" />
+                      <div className="w-10 h-10 bg-indigo-500/20 backdrop-blur-sm rounded-lg flex items-center justify-center border border-indigo-500/30 shadow-lg shadow-indigo-500/10">
+                        <Activity className="w-5 h-5 text-indigo-400 drop-shadow-lg" />
                       </div>
-                      <h2 className="text-xl font-bold text-white drop-shadow-md">Active Jobs</h2>
+                      <h2 className="text-xl font-bold text-white drop-shadow-md">Recent Activities</h2>
                     </div>
                     <button
-                      onClick={() => router.push('/job-listings')}
+                      onClick={() => router.push('/audit')}
                       className="text-emerald-400 hover:text-emerald-300 text-sm font-medium flex items-center gap-1 transition-colors drop-shadow-md"
                     >
                       View All
@@ -519,98 +773,50 @@ export default function Home() {
                     </button>
                   </div>
 
-                  {jobs.length === 0 ? (
+                  {recentActivities.length === 0 ? (
                     <div className="flex-1 flex items-center justify-center text-center bg-black/20 backdrop-blur-sm rounded-2xl border border-gray-700/30 relative z-10">
                       <div>
-                        <Briefcase className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-                        <p className="text-gray-400 font-medium">No active jobs</p>
-                        <p className="text-gray-500 text-sm mt-1">Create a job to start recruiting</p>
+                        <Activity className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+                        <p className="text-gray-400 font-medium">No recent activities</p>
+                        <p className="text-gray-500 text-sm mt-1">Activity history will appear here</p>
                       </div>
                     </div>
                   ) : (
                     <AnimatedList
-                      items={jobs}
-                      renderItem={(job, index) => (
+                      items={recentActivities}
+                      renderItem={(activity, index) => (
                         <motion.div 
                           initial={{ opacity: 0, x: -20 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ duration: 0.4, delay: index * 0.1 }}
-                          className="bg-gray-800/30 backdrop-blur-md border border-gray-700/40 rounded-2xl p-4 hover:bg-gray-700/40 hover:border-blue-500/50 hover:-translate-y-0.5 hover:scale-[1.01] transition-all duration-300 ease-out cursor-pointer group mb-4 shadow-lg shadow-black/10 hover:shadow-xl hover:shadow-blue-500/20 relative overflow-hidden"
+                          className="bg-gray-800/30 backdrop-blur-md border border-gray-700/40 rounded-2xl p-4 hover:bg-gray-700/40 hover:border-indigo-500/50 hover:-translate-y-0.5 hover:scale-[1.01] transition-all duration-300 ease-out cursor-pointer group mb-4 shadow-lg shadow-black/10 hover:shadow-xl hover:shadow-indigo-500/20 relative overflow-hidden"
                         >
-                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                          <div className="flex items-start justify-between mb-2 relative z-10">
-                            <h3 className="text-white font-semibold group-hover:text-blue-400 transition-colors drop-shadow-sm">
-                              {job.title}
-                            </h3>
-                            <span className="px-2 py-1 bg-emerald-500/20 backdrop-blur-sm text-emerald-400 text-xs font-medium rounded-full border border-emerald-500/30 group-hover:scale-105 transition-transform duration-300">
-                              Active
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-4 text-sm text-gray-400 relative z-10">
-                            {job.department && (
-                              <span className="flex items-center gap-1">
-                                <Briefcase className="w-3.5 h-3.5" />
-                                {job.department}
-                              </span>
-                            )}
-                            {job.location && (
-                              <span className="flex items-center gap-1">
-                                <MapPin className="w-3.5 h-3.5" />
-                                {job.location}
-                              </span>
-                            )}
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-indigo-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                          <div className="flex items-center gap-3 relative z-10">
+                            <div className={`w-9 h-9 rounded-lg flex items-center justify-center backdrop-blur-sm border ${getActivityColor(activity.action)} group-hover:scale-110 transition-transform duration-300`}>
+                              {getActivityIcon(activity.action)}
+                            </div>
+                            <div className="flex-1">
+                              <h3 className="text-white font-medium text-sm group-hover:text-indigo-400 transition-colors drop-shadow-sm">
+                                {formatActivityMessage(activity)}
+                              </h3>
+                              <p className="text-gray-400 text-xs mt-0.5">
+                                {getTimeAgo(activity.created_at)}
+                              </p>
+                            </div>
                           </div>
                         </motion.div>
                       )}
-                      onItemSelect={() => router.push('/job-listings')}
+                      onItemSelect={() => router.push('/audit')}
                       showGradients={true}
                       enableArrowNavigation={false}
                       displayScrollbar={true}
                     />
                   )}
                 </motion.div>
-
-                {/* Bottom Right - Shortlisted (Small) */}
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.5 }}
-                  onClick={(e) => {
-                    shortlistedRipple.addRipple(e);
-                  }}
-                  className="bg-gradient-to-br from-purple-500/20 to-purple-700/20 backdrop-blur-xl border border-purple-500/30 rounded-2xl p-6 lg:p-8 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300 ease-out min-h-[140px] flex flex-col justify-center shadow-lg shadow-purple-500/10 hover:shadow-2xl hover:shadow-purple-500/30 hover:border-purple-400/60 cursor-pointer"
-                >
-                  <RippleEffect ripples={shortlistedRipple.ripples} color="rgba(168, 85, 247, 0.4)" />
-                  <div className="absolute inset-0 bg-gradient-to-br from-purple-400/5 via-transparent to-transparent"></div>
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-purple-400/10 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-purple-400/20 transition-all duration-300"></div>
-                  <Clock className="w-8 h-8 lg:w-10 lg:h-10 text-purple-300 mb-4 relative z-10 drop-shadow-lg group-hover:scale-110 transition-transform duration-300" />
-                  <h3 className="text-4xl lg:text-5xl font-bold text-white mb-2 relative z-10 drop-shadow-md">
-                    <AnimatedCounter value={stats?.shortlisted_count || 0} duration={1.5} delay={0.6} />
-                  </h3>
-                  <p className="text-purple-200 text-sm lg:text-base font-medium relative z-10">Shortlisted</p>
-                </motion.div>
-
-                {/* Bottom Right - Success Rate (Small) */}
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.6 }}
-                  onClick={(e) => {
-                    successRateRipple.addRipple(e);
-                  }}
-                  className="bg-gradient-to-br from-orange-500/20 to-orange-700/20 backdrop-blur-xl border border-orange-500/30 rounded-2xl p-6 lg:p-8 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300 ease-out min-h-[140px] flex flex-col justify-center shadow-lg shadow-orange-500/10 hover:shadow-2xl hover:shadow-orange-500/30 hover:border-orange-400/60 cursor-pointer"
-                >
-                  <RippleEffect ripples={successRateRipple.ripples} color="rgba(249, 115, 22, 0.4)" />
-                  <div className="absolute inset-0 bg-gradient-to-br from-orange-400/5 via-transparent to-transparent"></div>
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-orange-400/10 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-orange-400/20 transition-all duration-300"></div>
-                  <TrendingUp className="w-8 h-8 lg:w-10 lg:h-10 text-orange-300 mb-4 relative z-10 drop-shadow-lg group-hover:scale-110 transition-transform duration-300" />
-                  <h3 className="text-4xl lg:text-5xl font-bold text-white mb-2 relative z-10 drop-shadow-md">
-                    <AnimatedCounter value={stats?.success_rate || 0} duration={1.5} delay={0.7} suffix="%" />
-                  </h3>
-                  <p className="text-orange-200 text-sm lg:text-base font-medium relative z-10">Success Rate</p>
-                </motion.div>
-
               </div>
+
+            </div>
             </>
           ) : null}
         </div>
