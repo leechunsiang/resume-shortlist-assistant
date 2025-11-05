@@ -237,26 +237,24 @@ export default function CandidatesPage() {
     .filter(c => {
       if (!searchQuery.trim()) return true;
       
-      const query = searchQuery.toLowerCase();
-      const firstName = c.first_name?.toLowerCase() || '';
-      const lastName = c.last_name?.toLowerCase() || '';
-      const fullName = `${firstName} ${lastName}`;
-      const email = c.email?.toLowerCase() || '';
-      const phone = c.phone?.toLowerCase() || '';
+      // Split search query into individual words
+      const searchWords = searchQuery.toLowerCase().trim().split(/\s+/);
       
-      // Search through applied positions
+      // Combine all searchable fields into one string
       const appliedPositions = c.job_applications?.map(app => 
-        app.job_listings?.title?.toLowerCase() || ''
+        app.job_listings?.title || ''
       ).join(' ') || '';
       
-      return (
-        fullName.includes(query) ||
-        firstName.includes(query) ||
-        lastName.includes(query) ||
-        email.includes(query) ||
-        phone.includes(query) ||
-        appliedPositions.includes(query)
-      );
+      const searchableText = [
+        c.first_name || '',
+        c.last_name || '',
+        c.email || '',
+        c.phone || '',
+        appliedPositions
+      ].join(' ').toLowerCase();
+      
+      // Check if ALL search words are present (in any order)
+      return searchWords.every(word => searchableText.includes(word));
     });
 
   const stats = {
@@ -534,31 +532,44 @@ export default function CandidatesPage() {
 
               {/* Search Bar */}
               <div className="mb-6">
-                <div className="relative">
+                <div className="relative w-full max-w-[500px]">
                   <input
                     type="text"
                     placeholder="Search by name, email, phone, or applied position..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full px-4 py-3 pl-12 bg-gray-900/40 backdrop-blur-xl border border-gray-700/50 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all"
+                    className="w-full px-4 py-3 pl-12 bg-gray-900/40 backdrop-blur-xl border border-gray-700/50 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all [&:not(:placeholder-shown)]:max-sm:pr-12"
                   />
-                  <svg
-                    className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+                  <button
+                    onClick={() => {
+                      const inputs = document.querySelectorAll('input[type="text"]');
+                      const searchInput = Array.from(inputs).find(input => 
+                        input.getAttribute('placeholder')?.includes('name, email')
+                      ) as HTMLInputElement;
+                      if (searchInput) searchInput.focus();
+                    }}
+                    className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-emerald-400 transition-colors"
+                    aria-label="Search"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                    />
-                  </svg>
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                      />
+                    </svg>
+                  </button>
                   {searchQuery && (
                     <button
                       onClick={() => setSearchQuery('')}
                       className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                      aria-label="Clear search"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -566,12 +577,12 @@ export default function CandidatesPage() {
                     </button>
                   )}
                 </div>
-                {searchQuery && (
-                  <p className="mt-2 text-sm text-gray-400">
-                    Found {filteredCandidates.length} {filteredCandidates.length === 1 ? 'candidate' : 'candidates'} matching "{searchQuery}"
-                  </p>
-                )}
               </div>
+              {searchQuery && (
+                <p className="mb-6 text-sm text-gray-400">
+                  Found {filteredCandidates.length} {filteredCandidates.length === 1 ? 'candidate' : 'candidates'} matching "{searchQuery}"
+                </p>
+              )}
 
               {/* Candidates List */}
               {filteredCandidates.length === 0 ? (

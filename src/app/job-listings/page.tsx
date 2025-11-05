@@ -169,22 +169,23 @@ export default function JobListings() {
   const draftJobs = jobs.filter(job => job.status === 'draft');
   const totalJobs = jobs.length;
 
-  // Filter jobs based on search query
+  // Filter jobs based on search query (smart multi-word search)
   const filteredJobs = jobs.filter(job => {
     if (!searchQuery.trim()) return true;
     
-    const query = searchQuery.toLowerCase();
-    const title = job.title?.toLowerCase() || '';
-    const department = job.department?.toLowerCase() || '';
-    const location = job.location?.toLowerCase() || '';
-    const requirements = job.requirements?.toLowerCase() || '';
+    // Split search query into individual words
+    const searchWords = searchQuery.toLowerCase().trim().split(/\s+/);
     
-    return (
-      title.includes(query) ||
-      department.includes(query) ||
-      location.includes(query) ||
-      requirements.includes(query)
-    );
+    // Combine all searchable fields into one string
+    const searchableText = [
+      job.title || '',
+      job.department || '',
+      job.location || '',
+      job.requirements || ''
+    ].join(' ').toLowerCase();
+    
+    // Check if ALL search words are present (in any order)
+    return searchWords.every(word => searchableText.includes(word));
   });
 
   const handleCreateJob = async (e: React.FormEvent) => {
@@ -697,31 +698,41 @@ export default function JobListings() {
 
               {/* Search Bar */}
               <div className="mb-6">
-                <div className="relative">
+                <div className="relative w-full max-w-[500px]">
                   <input
                     type="text"
                     placeholder="Search by title, department, location, or requirements..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full px-4 py-3 pl-12 bg-gray-900/40 backdrop-blur-xl border border-gray-700/50 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all"
+                    className="w-full px-4 py-3 pl-12 bg-gray-900/40 backdrop-blur-xl border border-gray-700/50 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all [&:not(:placeholder-shown)]:max-sm:pr-12"
                   />
-                  <svg
-                    className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+                  <button
+                    onClick={() => {
+                      const input = document.querySelector('input[type="text"]') as HTMLInputElement;
+                      if (input) input.focus();
+                    }}
+                    className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-emerald-400 transition-colors"
+                    aria-label="Search"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                    />
-                  </svg>
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                      />
+                    </svg>
+                  </button>
                   {searchQuery && (
                     <button
                       onClick={() => setSearchQuery('')}
                       className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                      aria-label="Clear search"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -729,12 +740,12 @@ export default function JobListings() {
                     </button>
                   )}
                 </div>
-                {searchQuery && (
-                  <p className="mt-2 text-sm text-gray-400">
-                    Found {filteredJobs.length} {filteredJobs.length === 1 ? 'job' : 'jobs'} matching "{searchQuery}"
-                  </p>
-                )}
               </div>
+              {searchQuery && (
+                <p className="mb-6 text-sm text-gray-400">
+                  Found {filteredJobs.length} {filteredJobs.length === 1 ? 'job' : 'jobs'} matching "{searchQuery}"
+                </p>
+              )}
 
               {/* Job Listings Grid */}
               {filteredJobs.length === 0 ? (
