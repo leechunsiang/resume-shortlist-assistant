@@ -177,16 +177,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Prepare candidates for analysis
-    const candidatesToAnalyze = candidates.map(c => ({
-      firstName: c.first_name,
-      lastName: c.last_name,
-      email: c.email,
-      resumeText: c.resume_text || '',
-      currentPosition: c.current_position,
-      yearsOfExperience: c.years_of_experience,
-      skills: c.skills,
-    }));
+    // Filter out candidates who already have applications for this job
+    const { data: existingApplications } = await supabase
+      .from('job_applications')
+      .select('candidate_id')
+      .eq('job_id', jobId);
+
+    const existingCandidateIds = new Set(
+      existingApplications?.map(app => app.candidate_id) || []
+    );
+
+    const candidatesToAnalyze = candidates
+      .filter(c => !existingCandidateIds.has(c.id))
+      .map(c => ({
+        id: c.id,
+        firstName: c.first_name,
+        lastName: c.last_name,
+        email: c.email,
+        resumeText: c.resume_text || '',
+        currentPosition: c.current_position,
+        yearsOfExperience: c.years_of_experience,
+        skills: c.skills,
+      }));
+
+    if (candidatesToAnalyze.length === 0) {
+      return NextResponse.json(
+        { error: 'All candidates have already applied to this job' },
+        { status: 400 }
+      );
+    }
 
     // Prepare job requirements
     const jobRequirements = {
@@ -202,17 +221,9 @@ export async function POST(request: NextRequest) {
 
     // Save results to job_applications table
     const applicationUpdates = [];
-    for (const candidate of candidates) {
+    for (const candidate of candidatesToAnalyze) {
       const analysis = analyses.get(candidate.email);
       if (analysis) {
-        // Check if application exists
-        const { data: existingApp } = await supabase
-          .from('job_applications')
-          .select('id')
-          .eq('job_id', jobId)
-          .eq('candidate_id', candidate.id)
-          .single();
-
         const appData = {
           job_id: jobId,
           candidate_id: candidate.id,
@@ -221,28 +232,18 @@ export async function POST(request: NextRequest) {
           status: analysis.recommendation === 'strongly_recommended' || analysis.recommendation === 'recommended' 
             ? 'shortlisted' 
             : 'pending',
+          applied_at: new Date().toISOString(),
           reviewed_at: new Date().toISOString(),
         };
 
-        if (existingApp) {
-          // Update existing application
-          await supabase
-            .from('job_applications')
-            .update(appData)
-            .eq('id', existingApp.id);
-        } else {
-          // Create new application
-          await supabase
-            .from('job_applications')
-            .insert({
-              ...appData,
-              applied_at: new Date().toISOString(),
-            });
-        }
+        // Create new application (no need to check for existing since we filtered them out)
+        await supabase
+          .from('job_applications')
+          .insert(appData);
 
         applicationUpdates.push({
           candidateId: candidate.id,
-          candidateName: `${candidate.first_name} ${candidate.last_name}`,
+          candidateName: `${candidate.firstName} ${candidate.lastName}`,
           matchScore: analysis.matchScore,
           recommendation: analysis.recommendation,
         });
