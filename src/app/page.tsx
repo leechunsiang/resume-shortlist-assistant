@@ -276,6 +276,7 @@ export default function Home() {
                       initial={{ opacity: 0, y: 30 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.8, delay: 0.4 }}
+                      className="mb-16"
                     >
                       <button
                         onClick={() => setShowAuthModal(true)}
@@ -293,7 +294,7 @@ export default function Home() {
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.6 }}
-                className="max-w-7xl mx-auto px-4 w-full pb-8"
+                className="max-w-7xl mx-auto px-4 w-full pb-8 mt-8"
               >
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {/* Feature 1 */}
