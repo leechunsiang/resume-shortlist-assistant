@@ -51,6 +51,7 @@ export default function JobListings() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [jobToDelete, setJobToDelete] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
+  const [searchQuery, setSearchQuery] = useState('');
   const [formData, setFormData] = useState({
     title: '',
     department: '',
@@ -167,6 +168,24 @@ export default function JobListings() {
   const activeJobs = jobs.filter(job => job.status === 'active');
   const draftJobs = jobs.filter(job => job.status === 'draft');
   const totalJobs = jobs.length;
+
+  // Filter jobs based on search query
+  const filteredJobs = jobs.filter(job => {
+    if (!searchQuery.trim()) return true;
+    
+    const query = searchQuery.toLowerCase();
+    const title = job.title?.toLowerCase() || '';
+    const department = job.department?.toLowerCase() || '';
+    const location = job.location?.toLowerCase() || '';
+    const requirements = job.requirements?.toLowerCase() || '';
+    
+    return (
+      title.includes(query) ||
+      department.includes(query) ||
+      location.includes(query) ||
+      requirements.includes(query)
+    );
+  });
 
   const handleCreateJob = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -676,15 +695,58 @@ export default function JobListings() {
                 </motion.div>
               </div>
 
+              {/* Search Bar */}
+              <div className="mb-6">
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Search by title, department, location, or requirements..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full px-4 py-3 pl-12 bg-gray-900/40 backdrop-blur-xl border border-gray-700/50 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all"
+                  />
+                  <svg
+                    className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    />
+                  </svg>
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+                {searchQuery && (
+                  <p className="mt-2 text-sm text-gray-400">
+                    Found {filteredJobs.length} {filteredJobs.length === 1 ? 'job' : 'jobs'} matching "{searchQuery}"
+                  </p>
+                )}
+              </div>
+
               {/* Job Listings Grid */}
-              {jobs.length === 0 ? (
+              {filteredJobs.length === 0 ? (
                 <div className="bg-gray-900/40 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-12 text-center shadow-lg shadow-black/10 relative overflow-hidden">
                   <div className="absolute inset-0 bg-gradient-to-br from-gray-800/10 via-transparent to-gray-900/20 pointer-events-none"></div>
                   <svg className="w-16 h-16 text-gray-600 mx-auto mb-4 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
-                  <p className="text-gray-400 text-lg font-medium relative z-10">No job listings found</p>
-                  {canCreate ? (
+                  <p className="text-gray-400 text-lg font-medium relative z-10">
+                    {searchQuery ? `No jobs found matching "${searchQuery}"` : 'No job listings found'}
+                  </p>
+                  {!searchQuery && canCreate ? (
                     <>
                       <p className="text-gray-500 text-sm mt-2 relative z-10">Create your first job listing to get started</p>
                       <div className="mt-6 inline-block relative z-10">
@@ -700,6 +762,8 @@ export default function JobListings() {
                         </GlassButton>
                       </div>
                     </>
+                  ) : searchQuery ? (
+                    <p className="text-gray-500 text-sm mt-2 relative z-10">Try adjusting your search terms</p>
                   ) : (
                     <p className="text-gray-500 text-sm mt-2 relative z-10">
                       No jobs have been created yet. Contact an admin to create job listings.
@@ -708,7 +772,7 @@ export default function JobListings() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {jobs.map((job, index) => (
+                  {filteredJobs.map((job, index) => (
                     <motion.div 
                       key={job.id}
                       initial={{ opacity: 0, y: 20 }}

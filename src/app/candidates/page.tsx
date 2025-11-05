@@ -52,6 +52,7 @@ export default function CandidatesPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   
@@ -231,9 +232,32 @@ export default function CandidatesPage() {
     return 'bg-red-400';
   };
 
-  const filteredCandidates = filterStatus === 'all' 
-    ? candidates 
-    : candidates.filter(c => c.status === filterStatus);
+  const filteredCandidates = candidates
+    .filter(c => filterStatus === 'all' || c.status === filterStatus)
+    .filter(c => {
+      if (!searchQuery.trim()) return true;
+      
+      const query = searchQuery.toLowerCase();
+      const firstName = c.first_name?.toLowerCase() || '';
+      const lastName = c.last_name?.toLowerCase() || '';
+      const fullName = `${firstName} ${lastName}`;
+      const email = c.email?.toLowerCase() || '';
+      const phone = c.phone?.toLowerCase() || '';
+      
+      // Search through applied positions
+      const appliedPositions = c.job_applications?.map(app => 
+        app.job_listings?.title?.toLowerCase() || ''
+      ).join(' ') || '';
+      
+      return (
+        fullName.includes(query) ||
+        firstName.includes(query) ||
+        lastName.includes(query) ||
+        email.includes(query) ||
+        phone.includes(query) ||
+        appliedPositions.includes(query)
+      );
+    });
 
   const stats = {
     total: candidates.length,
@@ -508,6 +532,47 @@ export default function CandidatesPage() {
                 </button>
               </div>
 
+              {/* Search Bar */}
+              <div className="mb-6">
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Search by name, email, phone, or applied position..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full px-4 py-3 pl-12 bg-gray-900/40 backdrop-blur-xl border border-gray-700/50 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all"
+                  />
+                  <svg
+                    className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    />
+                  </svg>
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+                {searchQuery && (
+                  <p className="mt-2 text-sm text-gray-400">
+                    Found {filteredCandidates.length} {filteredCandidates.length === 1 ? 'candidate' : 'candidates'} matching "{searchQuery}"
+                  </p>
+                )}
+              </div>
+
               {/* Candidates List */}
               {filteredCandidates.length === 0 ? (
                 <div className="bg-gray-900/40 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-12 text-center shadow-lg shadow-black/10 relative overflow-hidden">
@@ -516,8 +581,12 @@ export default function CandidatesPage() {
                     <svg className="w-16 h-16 text-gray-600 mx-auto mb-4 drop-shadow-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
                     </svg>
-                    <p className="text-gray-400 text-lg font-medium drop-shadow-md">No candidates found</p>
-                    <p className="text-gray-500 text-sm mt-2">Upload resumes to get started</p>
+                    <p className="text-gray-400 text-lg font-medium drop-shadow-md">
+                      {searchQuery ? `No candidates found matching "${searchQuery}"` : 'No candidates found'}
+                    </p>
+                    <p className="text-gray-500 text-sm mt-2">
+                      {searchQuery ? 'Try adjusting your search terms' : 'Upload resumes to get started'}
+                    </p>
                   </div>
                 </div>
               ) : (

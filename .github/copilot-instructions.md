@@ -17,6 +17,7 @@ Building a resume shortlist assistant web app using Next.js, React, Supabase, sh
 - [x] User profile display (first name, last name, username)
 - [x] Google Gemini AI integration for resume shortlisting
 - [x] Role-Based Access Control (RBAC) system
+- [x] Search/filter functionality for job listings and candidates
 - [ ] Install and configure shadcn/ui (optional - for future enhancements)
 - [x] Documentation complete
 
@@ -70,6 +71,16 @@ Building a resume shortlist assistant web app using Next.js, React, Supabase, sh
 - ✅ Support for both PDF and TXT formats
 - ✅ Data sanitization and error handling
 
+### Search & Filter
+- ✅ Real-time search (no page reload)
+- ✅ Job listings search (title, department, location, requirements)
+- ✅ Candidates search (name, email, phone, applied position)
+- ✅ Clear button to reset search
+- ✅ Result count display
+- ✅ Case-insensitive search
+- ✅ Multi-field search capability
+- ✅ Smart empty states
+
 ## Key Files
 
 ### RBAC Implementation
@@ -92,6 +103,12 @@ Building a resume shortlist assistant web app using Next.js, React, Supabase, sh
 - `src/app/api/ai-shortlist/route.ts` - API endpoint for AI analysis
 - `GEMINI_AI_SETUP.md` - Setup instructions
 - `PDF_PARSING_IMPLEMENTATION.md` - PDF parsing documentation
+
+### Search & Filter
+- `src/app/job-listings/page.tsx` - Job listings with search
+- `src/app/candidates/page.tsx` - Candidates with search
+- `SEARCH_FILTER_FEATURE.md` - Full implementation details
+- `SEARCH_FILTER_QUICK_GUIDE.md` - Quick reference guide
 
 ### Authentication
 - `src/app/login/page.tsx` - Login page
