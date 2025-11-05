@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { candidatesApi, dashboardApi, organizationsApi, authApi, jobsApi, type Candidate, type DashboardStats, type JobListing } from '@/lib/supabase';
 import { DashboardLayout } from '@/components/dashboard-layout';
 import { useRouter } from 'next/navigation';
-import { Briefcase, Users, Clock, TrendingUp, ArrowRight, MapPin, Calendar } from 'lucide-react';
+import { Briefcase, Users, Clock, TrendingUp, ArrowRight, MapPin, Calendar, Sparkles } from 'lucide-react';
 import AnimatedList from '@/components/animated-list';
 import TextType from '@/components/text-type';
 import { useRipple, RippleEffect } from '@/components/ripple-effect';
@@ -12,6 +12,7 @@ import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import { AnimatedCounter, AnimatedProgressBar, PulseStatusBadge } from '@/components/animated-counter';
 import { AuthModal } from '@/components/auth-modal';
 import { useOrganization } from '@/contexts/organization-context';
+import { FlipWords } from '@/components/ui/flip-words';
 
 export default function Home() {
   const router = useRouter();
@@ -228,20 +229,98 @@ export default function Home() {
 
         <div className="p-4 md:p-8">
           {error === 'auth' ? (
-            <div className="mb-6 bg-gradient-to-br from-emerald-900/20 to-emerald-800/10 border border-emerald-500/50 rounded-lg p-8 text-center">
-              <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-                </svg>
+            // Hero Section
+            <div className="min-h-[70vh] flex flex-col justify-between">
+              <div className="flex-1 flex items-center">
+                <div className="max-w-7xl mx-auto px-4 w-full">
+                  {/* Hero Content */}
+                  <div className="max-w-2xl">
+                    {/* Hero Heading */}
+                    <motion.div
+                      initial={{ opacity: 0, y: 30 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.8 }}
+                    >
+                      <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold mb-6 bg-gradient-to-r from-emerald-400 via-emerald-300 to-teal-400 bg-clip-text text-transparent leading-tight">
+                        Automate Resume Reviews with AI
+                      </h1>
+                    </motion.div>
+
+                    {/* Subheading with FlipWords */}
+                    <motion.div
+                      initial={{ opacity: 0, y: 30 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.8, delay: 0.2 }}
+                      className="mb-12"
+                    >
+                      <div className="text-2xl md:text-3xl text-gray-300 font-light">
+                        <FlipWords 
+                          words={["Streamline", "Track", "Efficient"]} 
+                          duration={2000}
+                          className="text-2xl md:text-3xl font-light"
+                        />
+                      </div>
+                    </motion.div>
+
+                    {/* CTA Button */}
+                    <motion.div
+                      initial={{ opacity: 0, y: 30 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.8, delay: 0.4 }}
+                    >
+                      <button
+                        onClick={() => setShowAuthModal(true)}
+                        className="px-8 py-4 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white text-lg font-semibold rounded-xl hover:from-emerald-600 hover:to-emerald-700 transition-all shadow-xl shadow-emerald-500/30 hover:shadow-emerald-500/50 hover:scale-105 transform"
+                      >
+                        Get Started
+                      </button>
+                    </motion.div>
+                  </div>
+                </div>
               </div>
-              <p className="text-xl font-semibold text-emerald-400 mb-2">Log in to get started</p>
-              <p className="text-gray-400 text-sm mb-6">Please log in to access your recruitment dashboard</p>
-              <button
-                onClick={() => setShowAuthModal(true)}
-                className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-semibold rounded-lg hover:from-emerald-600 hover:to-emerald-700 transition-all shadow-lg shadow-emerald-500/30"
+
+              {/* Features Grid at Bottom */}
+              <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.6 }}
+                className="max-w-7xl mx-auto px-4 w-full pb-8"
               >
-                Go to Login
-              </button>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Feature 1 */}
+                  <div className="bg-gradient-to-br from-emerald-900/20 to-emerald-800/10 border border-emerald-500/30 rounded-xl p-4 hover:border-emerald-500/50 transition-all">
+                    <div className="w-10 h-10 bg-emerald-500/20 rounded-lg flex items-center justify-center mb-3">
+                      <Sparkles className="w-5 h-5 text-emerald-400" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-white mb-1">AI-Powered Shortlisting</h3>
+                    <p className="text-gray-400 text-xs">
+                      Automatically analyze and rank candidates based on job requirements with Google Gemini AI
+                    </p>
+                  </div>
+
+                  {/* Feature 2 */}
+                  <div className="bg-gradient-to-br from-indigo-900/20 to-indigo-800/10 border border-indigo-500/30 rounded-xl p-4 hover:border-indigo-500/50 transition-all">
+                    <div className="w-10 h-10 bg-indigo-500/20 rounded-lg flex items-center justify-center mb-3">
+                      <Users className="w-5 h-5 text-indigo-400" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-white mb-1">Team Collaboration</h3>
+                    <p className="text-gray-400 text-xs">
+                      Work together with role-based access control and seamless team management
+                    </p>
+                  </div>
+
+                  {/* Feature 3 */}
+                  <div className="bg-gradient-to-br from-purple-900/20 to-purple-800/10 border border-purple-500/30 rounded-xl p-4 hover:border-purple-500/50 transition-all">
+                    <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center mb-3">
+                      <TrendingUp className="w-5 h-5 text-purple-400" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-white mb-1">Track Progress</h3>
+                    <p className="text-gray-400 text-xs">
+                      Monitor your recruitment pipeline with real-time analytics and insights
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
             </div>
           ) : error === 'database' ? (
             <div className="mb-6 bg-red-900/20 border border-red-500/50 rounded-lg p-4 text-red-400">
