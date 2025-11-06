@@ -597,6 +597,13 @@ export default function Home() {
                         <Briefcase className="w-12 h-12 text-gray-600 mx-auto mb-3" />
                         <p className="text-gray-400 font-medium">No active jobs</p>
                         <p className="text-gray-500 text-sm mt-1">Create a job to start recruiting</p>
+                        <button
+                          onClick={() => router.push('/job-listings?create=true')}
+                          className="mt-4 px-6 py-2.5 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors duration-200 flex items-center gap-2 mx-auto shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50"
+                        >
+                          <Briefcase className="w-4 h-4" />
+                          Create Job
+                        </button>
                       </div>
                     </div>
                   ) : (

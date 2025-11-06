@@ -81,6 +81,7 @@ export interface JobListing {
   description?: string;
   requirements?: string;
   status: 'active' | 'inactive' | 'draft';
+  expired_date?: string;
   created_by?: string;
   created_at: string;
   updated_at: string;

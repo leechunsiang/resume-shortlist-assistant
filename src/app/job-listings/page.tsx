@@ -6,7 +6,7 @@ import { useOrganization } from '@/contexts/organization-context';
 import { DashboardLayout } from '@/components/dashboard-layout';
 import { AnimatePresence, motion } from 'framer-motion';
 import { X, Sparkles, Edit, Users, Trash2, Download, FileText, Check, ChevronLeft, ChevronRight, Lock } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import TextType from '@/components/text-type';
 import { useRipple, RippleEffect } from '@/components/ripple-effect';
 import { AnimatedCounter, PulseStatusBadge } from '@/components/animated-counter';
@@ -15,6 +15,7 @@ import { Progress } from '@/components/ui/progress-1';
 import { exportJobsToCSV, exportJobsToPDF } from '@/lib/export';
 import { FormattedDescription } from '@/components/formatted-description';
 import { usePermissions, useRole } from '@/lib/rbac';
+import { DatePicker } from '@/components/ui/date-picker';
 import {
   Stepper,
   StepperContent,
@@ -28,6 +29,7 @@ import {
 
 export default function JobListings() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { can } = usePermissions();
   const { isViewer } = useRole();
   const { currentOrganization, loading: orgLoading } = useOrganization();
@@ -52,6 +54,7 @@ export default function JobListings() {
   const [jobToDelete, setJobToDelete] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
+  const [expiredDate, setExpiredDate] = useState<Date | undefined>(undefined);
   const [formData, setFormData] = useState({
     title: '',
     department: '',
@@ -104,6 +107,19 @@ export default function JobListings() {
 
     checkPermissions();
   }, [can, isViewer, currentOrganization, orgLoading]);
+
+  // Check for create parameter and auto-open modal
+  useEffect(() => {
+    const shouldCreate = searchParams.get('create');
+    if (shouldCreate === 'true' && canCreate && !isModalOpen) {
+      console.log('[JOB LISTINGS] Auto-opening create modal from URL parameter');
+      setIsModalOpen(true);
+      // Clean up URL parameter
+      const url = new URL(window.location.href);
+      url.searchParams.delete('create');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, [searchParams, canCreate, isModalOpen]);
 
   useEffect(() => {
     async function fetchData() {
@@ -212,6 +228,7 @@ export default function JobListings() {
           description: formData.description || undefined,
           requirements: formData.requirements || undefined,
           status: formData.status,
+          expired_date: expiredDate ? expiredDate.toISOString().split('T')[0] : undefined,
         });
 
         // Update job in the list
@@ -226,6 +243,7 @@ export default function JobListings() {
           description: formData.description || undefined,
           requirements: formData.requirements || undefined,
           status: formData.status,
+          expired_date: expiredDate ? expiredDate.toISOString().split('T')[0] : undefined,
           created_by: userId
         });
 
@@ -242,6 +260,7 @@ export default function JobListings() {
         requirements: '',
         status: 'draft'
       });
+      setExpiredDate(undefined); // Reset expired date
       setCurrentStep(1); // Reset to first step
       setIsModalOpen(false);
       setIsEditMode(false);
@@ -264,6 +283,12 @@ export default function JobListings() {
       requirements: job.requirements || '',
       status: job.status
     });
+    // Set expired date if it exists
+    if (job.expired_date) {
+      setExpiredDate(new Date(job.expired_date));
+    } else {
+      setExpiredDate(undefined);
+    }
     setIsEditMode(true);
     setEditingJobId(job.id);
     setCurrentStep(1); // Reset to first step
@@ -893,6 +918,7 @@ export default function JobListings() {
                 setIsEditMode(false);
                 setEditingJobId(null);
                 setCurrentStep(1);
+                setExpiredDate(undefined);
                 setFormData({
                   title: '',
                   department: '',
@@ -992,7 +1018,7 @@ export default function JobListings() {
                   <h3 className="text-lg font-semibold text-white">Step {currentStep} of 4</h3>
                   <p className="text-sm text-gray-400 mt-0.5">
                     {currentStep === 1 && "Enter the job title"}
-                    {currentStep === 2 && "Specify department and location"}
+                    {currentStep === 2 && "Specify department, location, and expiration date"}
                     {currentStep === 3 && "List the requirements"}
                     {currentStep === 4 && "Add the job description"}
                   </p>
@@ -1003,6 +1029,7 @@ export default function JobListings() {
                     setIsEditMode(false);
                     setEditingJobId(null);
                     setCurrentStep(1);
+                    setExpiredDate(undefined);
                     setFormData({
                       title: '',
                       department: '',
@@ -1099,6 +1126,20 @@ export default function JobListings() {
                           className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                           placeholder="e.g., Remote, San Francisco, CA"
                         />
+                      </div>
+
+                      <div>
+                        <label htmlFor="expired_date" className="block text-sm font-medium text-gray-300 mb-2">
+                          Expiration Date <span className="text-gray-500">(Optional)</span>
+                        </label>
+                        <DatePicker
+                          date={expiredDate}
+                          onDateChange={setExpiredDate}
+                          placeholder="Select expiration date"
+                          minDate={new Date()}
+                          className="bg-gray-800 border-gray-700 text-white hover:bg-gray-700 hover:text-white"
+                        />
+                        <p className="text-xs text-gray-400 mt-2">The date when this job posting will expire</p>
                       </div>
                     </div>
                   </StepperContent>
