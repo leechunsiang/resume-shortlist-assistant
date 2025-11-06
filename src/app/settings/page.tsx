@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/dashboard-layout';
 import { authApi, organizationsApi, organizationMembersApi, Organization, OrganizationMember } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
-import { Trash2, AlertTriangle, User, Mail, Shield, Settings as SettingsIcon, Building2, Users, UserPlus, Crown, ShieldCheck, MoreVertical, Edit, UserMinus, RefreshCw } from 'lucide-react';
+import { Trash2, AlertTriangle, User, Mail, Shield, Settings as SettingsIcon, Building2, Users, UserPlus, Crown, ShieldCheck, MoreVertical, Edit, UserMinus, RefreshCw, Plus } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useOrganization } from '@/contexts/organization-context';
 import { OrganizationSwitcher } from '@/components/organization-switcher';
@@ -40,6 +40,20 @@ export default function SettingsPage() {
   const [isUpdatingMember, setIsUpdatingMember] = useState(false);
   const [isDeletingMember, setIsDeletingMember] = useState(false);
   const [newRole, setNewRole] = useState<'owner' | 'admin' | 'member' | 'viewer'>('member');
+  
+  // Create organization state
+  const [showCreateOrgModal, setShowCreateOrgModal] = useState(false);
+  const [createOrgFormData, setCreateOrgFormData] = useState({
+    name: '',
+    website: '',
+    industry: '',
+    size: '1-10',
+    department: '',
+    job_role: '',
+    expected_resume_volume: '1-50',
+  });
+  const [createOrgError, setCreateOrgError] = useState<string | null>(null);
+  const [isCreatingOrg, setIsCreatingOrg] = useState(false);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -329,6 +343,48 @@ export default function SettingsPage() {
     }
   };
 
+  const handleCreateOrganization = async () => {
+    if (!createOrgFormData.name.trim()) {
+      setCreateOrgError('Organization name is required');
+      return;
+    }
+
+    if (!user) {
+      setCreateOrgError('No user found. Please log in again.');
+      return;
+    }
+
+    setIsCreatingOrg(true);
+    setCreateOrgError(null);
+
+    try {
+      await organizationsApi.create({
+        ...createOrgFormData,
+        created_by: user.id,
+      });
+
+      // Refresh organizations in context
+      await refreshOrganizations();
+
+      // Close modal and reset form
+      setShowCreateOrgModal(false);
+      setCreateOrgFormData({
+        name: '',
+        website: '',
+        industry: '',
+        size: '1-10',
+        department: '',
+        job_role: '',
+        expected_resume_volume: '1-50',
+      });
+    } catch (error: any) {
+      console.error('Error creating organization:', error);
+      setCreateOrgError(error.message || 'Failed to create organization. Please try again.');
+    } finally {
+      setIsCreatingOrg(false);
+    }
+  };
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -520,6 +576,13 @@ export default function SettingsPage() {
                   <Building2 className="w-5 h-5 text-indigo-400" />
                   <h2 className="text-xl font-semibold text-white">Organization Details</h2>
                 </div>
+                <button
+                  onClick={() => setShowCreateOrgModal(true)}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors flex items-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Create New Organization
+                </button>
               </div>
               
               <div className="space-y-4">
@@ -530,11 +593,20 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
-                {currentOrganization.description && (
+                {currentOrganization.department && (
                   <div>
-                    <label className="text-sm text-gray-400 block mb-1">Description</label>
+                    <label className="text-sm text-gray-400 block mb-1">Department</label>
                     <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg px-4 py-3">
-                      <span className="text-white">{currentOrganization.description}</span>
+                      <span className="text-white">{currentOrganization.department}</span>
+                    </div>
+                  </div>
+                )}
+
+                {currentOrganization.job_role && (
+                  <div>
+                    <label className="text-sm text-gray-400 block mb-1">Job Role</label>
+                    <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg px-4 py-3">
+                      <span className="text-white">{currentOrganization.job_role}</span>
                     </div>
                   </div>
                 )}
@@ -553,6 +625,15 @@ export default function SettingsPage() {
                     <label className="text-sm text-gray-400 block mb-1">Company Size</label>
                     <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg px-4 py-3">
                       <span className="text-white">{currentOrganization.size} employees</span>
+                    </div>
+                  </div>
+                )}
+
+                {currentOrganization.expected_resume_volume && (
+                  <div>
+                    <label className="text-sm text-gray-400 block mb-1">Expected Resume Volume</label>
+                    <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg px-4 py-3">
+                      <span className="text-white">{currentOrganization.expected_resume_volume}</span>
                     </div>
                   </div>
                 )}
@@ -1007,6 +1088,188 @@ export default function SettingsPage() {
                   <>
                     <UserMinus className="w-4 h-4" />
                     Remove Member
+                  </>
+                )}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Create Organization Modal */}
+      {showCreateOrgModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-gray-900 border border-indigo-500/50 rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 bg-indigo-500/20 rounded-full flex items-center justify-center">
+                <Plus className="w-6 h-6 text-indigo-400" />
+              </div>
+              <h2 className="text-xl font-bold text-white">Create New Organization</h2>
+            </div>
+
+            <p className="text-gray-300 mb-6">
+              Create an additional organization to manage separately.
+            </p>
+
+            <div className="space-y-4 mb-6">
+              {/* Organization Name */}
+              <div>
+                <label className="text-sm text-gray-400 block mb-2">
+                  Organization Name <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={createOrgFormData.name}
+                  onChange={(e) => {
+                    setCreateOrgFormData(prev => ({ ...prev, name: e.target.value }));
+                    setCreateOrgError(null);
+                  }}
+                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-indigo-500"
+                  placeholder="e.g., Acme Corporation"
+                  autoFocus
+                />
+              </div>
+
+              {/* Department & Job Role Row */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm text-gray-400 block mb-2">
+                    Department
+                  </label>
+                  <input
+                    type="text"
+                    value={createOrgFormData.department}
+                    onChange={(e) => setCreateOrgFormData(prev => ({ ...prev, department: e.target.value }))}
+                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-indigo-500"
+                    placeholder="e.g., Engineering, HR"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm text-gray-400 block mb-2">
+                    Your Job Role
+                  </label>
+                  <input
+                    type="text"
+                    value={createOrgFormData.job_role}
+                    onChange={(e) => setCreateOrgFormData(prev => ({ ...prev, job_role: e.target.value }))}
+                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-indigo-500"
+                    placeholder="e.g., HR Manager, Recruiter"
+                  />
+                </div>
+              </div>
+
+              {/* Website */}
+              <div>
+                <label className="text-sm text-gray-400 block mb-2">
+                  Website <span className="text-xs text-gray-500">(Optional)</span>
+                </label>
+                <input
+                  type="url"
+                  value={createOrgFormData.website}
+                  onChange={(e) => setCreateOrgFormData(prev => ({ ...prev, website: e.target.value }))}
+                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-indigo-500"
+                  placeholder="https://example.com"
+                />
+              </div>
+
+              {/* Industry & Size Row */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm text-gray-400 block mb-2">
+                    Industry
+                  </label>
+                  <input
+                    type="text"
+                    value={createOrgFormData.industry}
+                    onChange={(e) => setCreateOrgFormData(prev => ({ ...prev, industry: e.target.value }))}
+                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-indigo-500"
+                    placeholder="e.g., Technology"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm text-gray-400 block mb-2">
+                    Company Size
+                  </label>
+                  <select
+                    value={createOrgFormData.size}
+                    onChange={(e) => setCreateOrgFormData(prev => ({ ...prev, size: e.target.value }))}
+                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-indigo-500"
+                  >
+                    <option value="1-10">1-10 employees</option>
+                    <option value="11-50">11-50 employees</option>
+                    <option value="51-200">51-200 employees</option>
+                    <option value="201-500">201-500 employees</option>
+                    <option value="501-1000">501-1000 employees</option>
+                    <option value="1000+">1000+ employees</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Expected Resume Volume */}
+              <div>
+                <label className="text-sm text-gray-400 block mb-2">
+                  Expected Resume Upload Volume <span className="text-xs text-gray-500">(per job posting)</span>
+                </label>
+                <select
+                  value={createOrgFormData.expected_resume_volume}
+                  onChange={(e) => setCreateOrgFormData(prev => ({ ...prev, expected_resume_volume: e.target.value }))}
+                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-indigo-500"
+                >
+                  <option value="1-50">1 job posting = 1-50 resumes</option>
+                  <option value="51-100">2 job postings = 51-100 resumes</option>
+                  <option value="101-200">3-4 job postings = 101-200 resumes</option>
+                  <option value="201-500">5-10 job postings = 201-500 resumes</option>
+                  <option value="500+">10+ job postings = 500+ resumes</option>
+                </select>
+              </div>
+
+              {createOrgError && (
+                <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-3">
+                  <p className="text-sm text-red-400">{createOrgError}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowCreateOrgModal(false);
+                  setCreateOrgFormData({
+                    name: '',
+                    website: '',
+                    industry: '',
+                    size: '1-10',
+                    department: '',
+                    job_role: '',
+                    expected_resume_volume: '1-50',
+                  });
+                  setCreateOrgError(null);
+                }}
+                disabled={isCreatingOrg}
+                className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateOrganization}
+                disabled={isCreatingOrg || !createOrgFormData.name.trim()}
+                className="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isCreatingOrg ? (
+                  <>
+                    <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-4 h-4" />
+                    Create Organization
                   </>
                 )}
               </button>

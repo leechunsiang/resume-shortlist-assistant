@@ -12,10 +12,12 @@ export default function OrganizationSetupPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
-    description: '',
     website: '',
     industry: '',
     size: '1-10',
+    department: '',
+    job_role: '',
+    expected_resume_volume: '1-50',
   });
 
   useEffect(() => {
@@ -109,20 +111,39 @@ export default function OrganizationSetupPage() {
               />
             </div>
 
-            {/* Description */}
-            <div>
-              <label htmlFor="description" className="block text-sm font-medium text-gray-300 mb-2">
-                Description
-              </label>
-              <textarea
-                id="description"
-                name="description"
-                value={formData.description}
-                onChange={handleInputChange}
-                rows={3}
-                className="w-full px-4 py-3 bg-black/40 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all resize-none"
-                placeholder="Brief description of your organization..."
-              />
+            {/* Department & Job Role Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Department */}
+              <div>
+                <label htmlFor="department" className="block text-sm font-medium text-gray-300 mb-2">
+                  Department
+                </label>
+                <input
+                  type="text"
+                  id="department"
+                  name="department"
+                  value={formData.department}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 bg-black/40 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                  placeholder="e.g., Engineering, HR"
+                />
+              </div>
+
+              {/* Job Role */}
+              <div>
+                <label htmlFor="job_role" className="block text-sm font-medium text-gray-300 mb-2">
+                  Your Job Role
+                </label>
+                <input
+                  type="text"
+                  id="job_role"
+                  name="job_role"
+                  value={formData.job_role}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 bg-black/40 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                  placeholder="e.g., HR Manager, Recruiter"
+                />
+              </div>
             </div>
 
             {/* Website */}
@@ -179,6 +200,26 @@ export default function OrganizationSetupPage() {
                   <option value="1000+">1000+ employees</option>
                 </select>
               </div>
+            </div>
+
+            {/* Expected Resume Volume */}
+            <div>
+              <label htmlFor="expected_resume_volume" className="block text-sm font-medium text-gray-300 mb-2">
+                Expected Resume Upload Volume <span className="text-gray-500 text-xs">(per job posting)</span>
+              </label>
+              <select
+                id="expected_resume_volume"
+                name="expected_resume_volume"
+                value={formData.expected_resume_volume}
+                onChange={handleInputChange}
+                className="w-full px-4 py-3 bg-black/40 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+              >
+                <option value="1-50">1 job posting = 1-50 resumes</option>
+                <option value="51-100">2 job postings = 51-100 resumes</option>
+                <option value="101-200">3-4 job postings = 101-200 resumes</option>
+                <option value="201-500">5-10 job postings = 201-500 resumes</option>
+                <option value="500+">10+ job postings = 500+ resumes</option>
+              </select>
             </div>
 
             {/* Submit Button */}

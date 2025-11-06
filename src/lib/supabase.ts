@@ -25,6 +25,9 @@ export interface Organization {
   website?: string;
   industry?: string;
   size?: string;
+  department?: string;
+  job_role?: string;
+  expected_resume_volume?: string;
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -117,6 +120,9 @@ export const organizationsApi = {
     website?: string;
     industry?: string;
     size?: string;
+    department?: string;
+    job_role?: string;
+    expected_resume_volume?: string;
     created_by: string;
   }) => {
     const { data: org, error } = await supabase

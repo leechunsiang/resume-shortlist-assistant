@@ -49,6 +49,8 @@ Building a resume shortlist assistant web app using Next.js, React, Supabase, sh
 - ✅ Invitation system with pending status
 - ✅ Automatic membership activation
 - ✅ LocalStorage persistence for selected organization
+- ✅ Create additional organizations from settings
+- ✅ Updated organization form (removed description, added department, job role, resume volume)
 
 ### Role-Based Access Control (RBAC)
 - ✅ Four-tier role system (Owner, Admin, Member, Viewer)
@@ -103,8 +105,13 @@ Building a resume shortlist assistant web app using Next.js, React, Supabase, sh
 ### Organization Management
 - `src/contexts/organization-context.tsx` - Global organization state
 - `src/components/organization-switcher.tsx` - Dropdown switcher UI
+- `src/app/organization/setup/page.tsx` - Initial organization setup form
+- `src/app/settings/page.tsx` - Settings with create organization modal
 - `ORGANIZATION_SWITCHER.md` - Organization switcher documentation
 - `PENDING_MEMBERSHIP_ACTIVATION.md` - Membership activation docs
+- `ORGANIZATION_FORM_UPDATES.md` - Form changes documentation
+- `ORGANIZATION_FORM_QUICK_REF.md` - Quick reference guide
+- `supabase-organization-update.sql` - Database migration for new fields
 
 ### AI Integration
 - `src/lib/gemini.ts` - Gemini AI service
