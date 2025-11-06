@@ -172,12 +172,20 @@ export default function SignupPage() {
                 />
               </div>
 
-              <button
-                type="submit"
-                className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-2.5 rounded-lg transition-colors shadow-lg shadow-emerald-500/30 mt-4"
-              >
-                Next Step
-              </button>
+              <div className="flex gap-2 mt-4">
+                <Link 
+                  href="/"
+                  className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2.5 rounded-lg transition-colors text-sm text-center flex items-center justify-center"
+                >
+                  Cancel
+                </Link>
+                <button
+                  type="submit"
+                  className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-2.5 rounded-lg transition-colors shadow-lg shadow-emerald-500/30 text-sm"
+                >
+                  Next Step
+                </button>
+              </div>
             </form>
           )}
 
