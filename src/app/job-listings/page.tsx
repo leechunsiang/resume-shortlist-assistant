@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { jobsApi, candidatesApi, authApi, type JobListing } from '@/lib/supabase';
 import { useOrganization } from '@/contexts/organization-context';
 import { DashboardLayout } from '@/components/dashboard-layout';
@@ -27,7 +27,7 @@ import {
   StepperTrigger,
 } from '@/components/ui/stepper';
 
-export default function JobListings() {
+function JobListingsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { can } = usePermissions();
@@ -1798,5 +1798,17 @@ export default function JobListings() {
         </>
       )}
     </DashboardLayout>
+  );
+}
+
+export default function JobListings() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+        <div className="text-white text-lg">Loading...</div>
+      </div>
+    }>
+      <JobListingsContent />
+    </Suspense>
   );
 }
