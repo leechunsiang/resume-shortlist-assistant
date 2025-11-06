@@ -231,16 +231,21 @@ export default function SignupPage() {
 
               <div className="flex items-start">
                 <input 
-                  id="terms" 
+                  id="privacy" 
                   type="checkbox" 
                   required
                   className="w-3.5 h-3.5 mt-0.5 bg-black/40 border-gray-700 rounded text-emerald-500 focus:ring-emerald-500 focus:ring-offset-0" 
                 />
-                <label htmlFor="terms" className="ml-2 text-xs text-gray-400">
+                <label htmlFor="privacy" className="ml-2 text-xs text-gray-400">
                   I agree to the{' '}
-                  <Link href="/terms" className="text-emerald-400 hover:text-emerald-300">Terms of Service</Link>
-                  {' '}and{' '}
-                  <Link href="/privacy" className="text-emerald-400 hover:text-emerald-300">Privacy Policy</Link>
+                  <a 
+                    href="/privacy" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-emerald-400 hover:text-emerald-300"
+                  >
+                    Privacy Policy
+                  </a>
                 </label>
               </div>
 
