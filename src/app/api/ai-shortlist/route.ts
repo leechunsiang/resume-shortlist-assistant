@@ -22,7 +22,14 @@ function sanitizeArray(value: any): string[] {
 
 export async function POST(request: NextRequest) {
   try {
-    const { jobId, organizationId, resumes, mode = 'batch' } = await request.json();
+    const { 
+      jobId, 
+      organizationId, 
+      resumes, 
+      mode = 'batch',
+      customExtractPrompt,
+      customAnalysisPrompt 
+    } = await request.json();
 
     if (!jobId) {
       return NextResponse.json(
@@ -82,7 +89,7 @@ export async function POST(request: NextRequest) {
           resumeText = resumeText.replace(/\0/g, '').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
           
           // Extract candidate information from resume using AI
-          const candidateInfo = await extractCandidateInfo(resumeText);
+          const candidateInfo = await extractCandidateInfo(resumeText, customExtractPrompt);
           
           // Analyze resume against job requirements
           const analysis = await analyzeResumeMatch(
@@ -95,7 +102,8 @@ export async function POST(request: NextRequest) {
               yearsOfExperience: candidateInfo.yearsOfExperience,
               skills: candidateInfo.skills,
             },
-            jobRequirements
+            jobRequirements,
+            customAnalysisPrompt
           );
 
           // Create candidate in database
@@ -217,7 +225,12 @@ export async function POST(request: NextRequest) {
     };
 
     // Analyze candidates
-    const analyses = await batchAnalyzeCandidates(candidatesToAnalyze, jobRequirements);
+    const analyses = await batchAnalyzeCandidates(
+      candidatesToAnalyze, 
+      jobRequirements, 
+      undefined, 
+      customAnalysisPrompt
+    );
 
     // Save results to job_applications table
     const applicationUpdates = [];

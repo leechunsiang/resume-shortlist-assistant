@@ -727,6 +727,39 @@ export default function CandidatesPage() {
                     <p className="text-emerald-400">
                       {selectedCandidate.current_position || 'Position not specified'}
                     </p>
+                    {/* Status Selector */}
+                    <div className="mt-2">
+                      <label className="text-xs text-gray-400 block mb-1">Status</label>
+                      <select
+                        value={selectedCandidate.status}
+                        onChange={async (e) => {
+                          const newStatus = e.target.value as Candidate['status'];
+                          try {
+                            await candidatesApi.update(selectedCandidate.id, { status: newStatus });
+                            // Update local state
+                            setSelectedCandidate({ ...selectedCandidate, status: newStatus });
+                            setCandidates(candidates.map(c => 
+                              c.id === selectedCandidate.id ? { ...c, status: newStatus } : c
+                            ));
+                          } catch (error) {
+                            console.error('Error updating status:', error);
+                            alert('Failed to update status');
+                          }
+                        }}
+                        disabled={isViewerRole}
+                        className={`px-3 py-1.5 rounded-lg text-sm font-semibold backdrop-blur-sm border transition-colors ${
+                          isViewerRole 
+                            ? 'bg-gray-700/50 border-gray-600 text-gray-400 cursor-not-allowed' 
+                            : 'bg-gray-800/50 border-gray-600 text-white hover:border-emerald-500/50 cursor-pointer'
+                        } ${getStatusColor(selectedCandidate.status)}`}
+                      >
+                        <option value="pending">Pending</option>
+                        <option value="shortlisted">Shortlisted</option>
+                        <option value="interviewed">Interviewed</option>
+                        <option value="hired">Hired</option>
+                        <option value="rejected">Rejected</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
                 <button

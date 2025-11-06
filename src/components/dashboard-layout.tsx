@@ -120,7 +120,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     },
     {
       label: "Filters",
-      href: "#",
+      href: "/filters",
       icon: (
         <Filter className="text-neutral-200 h-5 w-5 flex-shrink-0" />
       ),

@@ -70,6 +70,8 @@ Building a resume shortlist assistant web app using Next.js, React, Supabase, sh
 - ✅ PDF text extraction with pdf-parse library
 - ✅ Support for both PDF and TXT formats
 - ✅ Data sanitization and error handling
+- ✅ Custom AI prompt configuration (via Filters page)
+- ✅ Organization-specific prompt customization
 
 ### Search & Filter
 - ✅ Real-time search (no page reload)
@@ -80,6 +82,13 @@ Building a resume shortlist assistant web app using Next.js, React, Supabase, sh
 - ✅ Case-insensitive search
 - ✅ Multi-field search capability
 - ✅ Smart empty states
+
+### Candidate Management
+- ✅ Status update dropdown in candidate detail panel
+- ✅ Change candidate status (pending, shortlisted, interviewed, hired, rejected)
+- ✅ Real-time status updates without page reload
+- ✅ RBAC-compliant (viewers cannot edit)
+- ✅ Color-coded status indicators
 
 ## Key Files
 
@@ -101,14 +110,20 @@ Building a resume shortlist assistant web app using Next.js, React, Supabase, sh
 - `src/lib/gemini.ts` - Gemini AI service
 - `src/lib/pdf-parser.ts` - PDF text extraction utilities
 - `src/app/api/ai-shortlist/route.ts` - API endpoint for AI analysis
+- `src/app/filters/page.tsx` - AI prompt configuration page
 - `GEMINI_AI_SETUP.md` - Setup instructions
 - `PDF_PARSING_IMPLEMENTATION.md` - PDF parsing documentation
+- `AI_PROMPT_CONFIGURATION.md` - Custom prompt guide
 
 ### Search & Filter
 - `src/app/job-listings/page.tsx` - Job listings with search
 - `src/app/candidates/page.tsx` - Candidates with search
 - `SEARCH_FILTER_FEATURE.md` - Full implementation details
 - `SEARCH_FILTER_QUICK_GUIDE.md` - Quick reference guide
+
+### Candidate Management
+- `src/app/candidates/page.tsx` - Candidate list and status updates
+- `CANDIDATE_STATUS_UPDATE.md` - Status update feature documentation
 
 ### Authentication
 - `src/app/login/page.tsx` - Login page

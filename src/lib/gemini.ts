@@ -48,7 +48,10 @@ export interface ExtractedCandidateInfo {
 /**
  * Extract candidate information from resume text using Gemini AI
  */
-export async function extractCandidateInfo(resumeText: string): Promise<ExtractedCandidateInfo> {
+export async function extractCandidateInfo(
+  resumeText: string, 
+  customPrompt?: string
+): Promise<ExtractedCandidateInfo> {
   try {
     // Check if API key is configured
     if (!process.env.GOOGLE_GEMINI_API_KEY) {
@@ -57,10 +60,11 @@ export async function extractCandidateInfo(resumeText: string): Promise<Extracte
 
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
 
-    const prompt = `You are an expert at extracting structured information from resumes. Extract the following information from this resume and return it as JSON.
+    // Use custom prompt if provided, otherwise use default
+    const defaultPrompt = `You are an expert at extracting structured information from resumes. Extract the following information from this resume and return it as JSON.
 
 RESUME TEXT:
-${resumeText.substring(0, 10000)} 
+{RESUME_TEXT}
 
 Extract and return a SINGLE JSON object (not an array) with this exact structure:
 {
@@ -84,6 +88,9 @@ Important:
 - For firstName and lastName, if only full name is provided, split it appropriately
 
 Provide ONLY the JSON response, no additional text or explanation.`;
+
+    const promptTemplate = customPrompt || defaultPrompt;
+    const prompt = promptTemplate.replace('{RESUME_TEXT}', resumeText.substring(0, 10000));
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
@@ -168,7 +175,8 @@ Provide ONLY the JSON response, no additional text or explanation.`;
  */
 export async function analyzeResumeMatch(
   candidate: CandidateResume,
-  job: JobRequirements
+  job: JobRequirements,
+  customPrompt?: string
 ): Promise<ResumeAnalysis> {
   try {
     // Check if API key is configured
@@ -178,28 +186,29 @@ export async function analyzeResumeMatch(
 
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
 
-    const prompt = `You are an expert HR recruiter and resume analyzer. Analyze the following candidate's resume against the job requirements and provide a detailed assessment.
+    // Use custom prompt if provided, otherwise use default
+    const defaultPrompt = `You are an expert HR recruiter and resume analyzer. Analyze the following candidate's resume against the job requirements and provide a detailed assessment.
 
 JOB DETAILS:
-Title: ${job.title}
-Department: ${job.department || 'Not specified'}
-Employment Type: ${job.employmentType || 'Not specified'}
+Title: {JOB_TITLE}
+Department: {JOB_DEPARTMENT}
+Employment Type: {JOB_EMPLOYMENT_TYPE}
 
 JOB DESCRIPTION:
-${job.description}
+{JOB_DESCRIPTION}
 
 JOB REQUIREMENTS:
-${job.requirements}
+{JOB_REQUIREMENTS}
 
 CANDIDATE INFORMATION:
-Name: ${candidate.firstName} ${candidate.lastName}
-Email: ${candidate.email}
-Current Position: ${candidate.currentPosition || 'Not specified'}
-Years of Experience: ${candidate.yearsOfExperience || 'Not specified'}
-Skills: ${candidate.skills?.join(', ') || 'Not specified'}
+Name: {CANDIDATE_NAME}
+Email: {CANDIDATE_EMAIL}
+Current Position: {CANDIDATE_POSITION}
+Years of Experience: {CANDIDATE_EXPERIENCE}
+Skills: {CANDIDATE_SKILLS}
 
 RESUME TEXT:
-${candidate.resumeText.substring(0, 8000)}
+{RESUME_TEXT}
 
 Please analyze this candidate and provide a JSON response with the following structure:
 {
@@ -214,6 +223,22 @@ Please analyze this candidate and provide a JSON response with the following str
 }
 
 Provide ONLY the JSON response, no additional text.`;
+
+    const promptTemplate = customPrompt || defaultPrompt;
+    
+    // Replace placeholders with actual values
+    const prompt = promptTemplate
+      .replace('{JOB_TITLE}', job.title)
+      .replace('{JOB_DEPARTMENT}', job.department || 'Not specified')
+      .replace('{JOB_EMPLOYMENT_TYPE}', job.employmentType || 'Not specified')
+      .replace('{JOB_DESCRIPTION}', job.description)
+      .replace('{JOB_REQUIREMENTS}', job.requirements)
+      .replace('{CANDIDATE_NAME}', `${candidate.firstName} ${candidate.lastName}`)
+      .replace('{CANDIDATE_EMAIL}', candidate.email)
+      .replace('{CANDIDATE_POSITION}', candidate.currentPosition || 'Not specified')
+      .replace('{CANDIDATE_EXPERIENCE}', candidate.yearsOfExperience?.toString() || 'Not specified')
+      .replace('{CANDIDATE_SKILLS}', candidate.skills?.join(', ') || 'Not specified')
+      .replace('{RESUME_TEXT}', candidate.resumeText.substring(0, 8000));
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
@@ -282,7 +307,8 @@ Provide ONLY the JSON response, no additional text.`;
 export async function batchAnalyzeCandidates(
   candidates: CandidateResume[],
   job: JobRequirements,
-  onProgress?: (completed: number, total: number) => void
+  onProgress?: (completed: number, total: number) => void,
+  customPrompt?: string
 ): Promise<Map<string, ResumeAnalysis>> {
   const results = new Map<string, ResumeAnalysis>();
   const total = candidates.length;
@@ -290,7 +316,7 @@ export async function batchAnalyzeCandidates(
   for (let i = 0; i < candidates.length; i++) {
     const candidate = candidates[i];
     try {
-      const analysis = await analyzeResumeMatch(candidate, job);
+      const analysis = await analyzeResumeMatch(candidate, job, customPrompt);
       results.set(candidate.email, analysis);
       
       if (onProgress) {
