@@ -676,5 +676,21 @@ export const authApi = {
     console.log('[CLIENT] Signing out user...');
     await authApi.signOut();
     console.log('[CLIENT] User signed out successfully');
-  }
+  },
+
+  // Request password reset email
+  forgotPassword: async (email: string, redirectTo?: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: redirectTo || `${window.location.origin}/reset-password`,
+    });
+    if (error) throw error;
+  },
+
+  // Reset password with new password
+  resetPassword: async (newPassword: string) => {
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+    if (error) throw error;
+  },
 };

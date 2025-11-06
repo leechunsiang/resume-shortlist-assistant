@@ -149,9 +149,9 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
                       <input type="checkbox" className="w-4 h-4 bg-black/40 border-gray-700 rounded text-emerald-500 focus:ring-emerald-500 focus:ring-offset-0" />
                       <span className="ml-2 text-gray-400">Remember me</span>
                     </label>
-                    <button type="button" className="text-emerald-400 hover:text-emerald-300 transition-colors">
+                    <Link href="/forgot-password" onClick={handleClose} className="text-emerald-400 hover:text-emerald-300 transition-colors">
                       Forgot password?
-                    </button>
+                    </Link>
                   </div>
 
                   {/* Submit Button */}
