@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { analyzeResumeMatch, batchAnalyzeCandidates, extractCandidateInfo } from '@/lib/gemini';
+import { analyzeResumeMatch, batchAnalyzeCandidates, extractCandidateInfo } from '@/lib/openai';
 import { supabase } from '@/lib/supabase';
 import { extractTextFromBase64PDF } from '@/lib/pdf-parser';
 import { createClient } from '@supabase/supabase-js';

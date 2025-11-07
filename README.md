@@ -110,7 +110,7 @@ resume-shortlist-assistant/
 │       ├── rbac.ts                 # Role-based access control
 │       ├── audit.ts                # Audit trail logging
 │       ├── export.ts               # CSV/PDF export utilities
-│       ├── gemini.ts               # OpenAI GPT-4.1-nano integration (file name kept for compatibility)
+│       ├── openai.ts               # OpenAI GPT-4.1-nano integration
 │       └── pdf-parser.ts           # PDF text extraction
 ├── public/                         # Static assets
 ├── *.sql                          # Database migrations
