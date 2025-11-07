@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { analyzeResumeMatch, batchAnalyzeCandidates, extractCandidateInfo } from '@/lib/gemini';
 import { supabase } from '@/lib/supabase';
 import { extractTextFromBase64PDF } from '@/lib/pdf-parser';
+import { createClient } from '@supabase/supabase-js';
+import { cookies } from 'next/headers';
 
 // Helper function to sanitize integer values
 function sanitizeInteger(value: any): number {
@@ -22,6 +24,27 @@ function sanitizeArray(value: any): string[] {
 
 export async function POST(request: NextRequest) {
   try {
+    // Get current user from session cookie
+    const cookieStore = await cookies();
+    const authToken = cookieStore.get('sb-access-token') || cookieStore.get('sb-yfljhsgwbclprbsteqox-auth-token');
+    
+    let userId: string | undefined;
+    
+    // Try to get user from session
+    if (authToken) {
+      const supabaseClient = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+      
+      const { data: { user } } = await supabaseClient.auth.getUser();
+      userId = user?.id;
+    }
+    
+    // If no user, continue anyway (for backwards compatibility)
+    // The usage logging will just not include user tracking
+    console.log('[API] User ID:', userId || 'anonymous');
+
     const { 
       jobId, 
       organizationId, 
@@ -89,7 +112,12 @@ export async function POST(request: NextRequest) {
           resumeText = resumeText.replace(/\0/g, '').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
           
           // Extract candidate information from resume using AI
-          const candidateInfo = await extractCandidateInfo(resumeText, customExtractPrompt);
+          const candidateInfo = await extractCandidateInfo(
+            resumeText, 
+            customExtractPrompt,
+            userId,
+            organizationId
+          );
           
           // Analyze resume against job requirements
           const analysis = await analyzeResumeMatch(
@@ -103,10 +131,18 @@ export async function POST(request: NextRequest) {
               skills: candidateInfo.skills,
             },
             jobRequirements,
-            customAnalysisPrompt
+            customAnalysisPrompt,
+            userId,
+            organizationId,
+            jobId,
+            undefined // candidateId not yet created
           );
 
           // Create candidate in database
+          // Determine status: shortlisted if score >= 50, rejected if score < 50
+          const matchScore = Math.floor(analysis.matchScore);
+          const candidateStatus = matchScore >= 50 ? 'shortlisted' : 'rejected';
+          
           const { data: candidate, error: candidateError } = await supabase
             .from('candidates')
             .insert({
@@ -120,10 +156,8 @@ export async function POST(request: NextRequest) {
               years_of_experience: sanitizeInteger(candidateInfo.yearsOfExperience),
               skills: sanitizeArray(candidateInfo.skills),
               education: candidateInfo.education || null,
-              score: Math.floor(analysis.matchScore),
-              status: analysis.recommendation === 'strongly_recommended' || analysis.recommendation === 'recommended' 
-                ? 'shortlisted' 
-                : 'pending',
+              score: matchScore,
+              status: candidateStatus,
             })
             .select()
             .single();
@@ -139,11 +173,9 @@ export async function POST(request: NextRequest) {
             .insert({
               job_id: jobId,
               candidate_id: candidate.id,
-              match_score: Math.floor(analysis.matchScore),
+              match_score: matchScore,
               ai_analysis: analysis,
-              status: analysis.recommendation === 'strongly_recommended' || analysis.recommendation === 'recommended' 
-                ? 'shortlisted' 
-                : 'pending',
+              status: candidateStatus,
               applied_at: new Date().toISOString(),
               reviewed_at: new Date().toISOString(),
             });
@@ -229,7 +261,10 @@ export async function POST(request: NextRequest) {
       candidatesToAnalyze, 
       jobRequirements, 
       undefined, 
-      customAnalysisPrompt
+      customAnalysisPrompt,
+      userId,
+      organizationId,
+      jobId
     );
 
     // Save results to job_applications table
@@ -237,14 +272,16 @@ export async function POST(request: NextRequest) {
     for (const candidate of candidatesToAnalyze) {
       const analysis = analyses.get(candidate.email);
       if (analysis) {
+        // Determine status: shortlisted if score >= 50, rejected if score < 50
+        const matchScore = Math.floor(analysis.matchScore);
+        const applicationStatus = matchScore >= 50 ? 'shortlisted' : 'rejected';
+        
         const appData = {
           job_id: jobId,
           candidate_id: candidate.id,
-          match_score: analysis.matchScore,
+          match_score: matchScore,
           ai_analysis: analysis,
-          status: analysis.recommendation === 'strongly_recommended' || analysis.recommendation === 'recommended' 
-            ? 'shortlisted' 
-            : 'pending',
+          status: applicationStatus,
           applied_at: new Date().toISOString(),
           reviewed_at: new Date().toISOString(),
         };

@@ -1,15 +1,15 @@
 # Resume Shortlist Assistant
 
-A modern, AI-powered resume screening and shortlisting web application built with Next.js, React, Tailwind CSS, Supabase, and Google Gemini AI.
+A modern, AI-powered resume screening and shortlisting web application built with Next.js, React, Tailwind CSS, Supabase, and OpenAI GPT-4.1-nano.
 
 ## ✨ Features
 
-- 🎯 **AI-Powered Shortlisting** - Automatic candidate analysis with Google Gemini AI
-- � **Role-Based Access Control** - Admin, Recruiter, and Viewer roles with granular permissions
+- 🎯 **AI-Powered Shortlisting** - Automatic candidate analysis with OpenAI GPT-4.1-nano
+- 🔒 **Role-Based Access Control** - Admin, Recruiter, and Viewer roles with granular permissions
 - 📝 **Audit Trail** - Complete tracking of all user actions and system events
-- � **CSV/PDF Export** - Export job listings, candidates, and audit logs
+- 📊 **CSV/PDF Export** - Export job listings, candidates, and audit logs
 - 💼 **Job Management** - Create, edit, and manage job postings
-- � **Resume Processing** - Upload and parse PDF/TXT resumes
+- 📄 **Resume Processing** - Upload and parse PDF/TXT resumes
 - 🎨 **Modern UI** - Glass morphism effects, animations, and responsive design
 - 🔐 **Secure Authentication** - Supabase Auth with email/password
 
@@ -20,7 +20,7 @@ A modern, AI-powered resume screening and shortlisting web application built wit
 - **Styling**: Tailwind CSS
 - **UI Components**: shadcn/ui + Custom components
 - **Database**: Supabase (PostgreSQL)
-- **AI**: Google Gemini AI
+- **AI**: OpenAI GPT-4.1-nano
 - **Animation**: Framer Motion
 - **PDF Processing**: pdf-parse, pdf2json
 - **Export**: jsPDF, PapaParse
@@ -33,7 +33,7 @@ A modern, AI-powered resume screening and shortlisting web application built wit
 - Node.js 18+ installed
 - npm or yarn package manager
 - Supabase account (free tier works)
-- Google Gemini API key (free tier available)
+- OpenAI API key (get from https://platform.openai.com/api-keys)
 
 ### Installation
 
@@ -63,7 +63,7 @@ Then edit `.env.local` and add your credentials:
 ```env
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-GOOGLE_GEMINI_API_KEY=your_gemini_api_key
+OPENAI_API_KEY=your_openai_api_key
 ```
 
 4. **Set up the database**
@@ -110,7 +110,7 @@ resume-shortlist-assistant/
 │       ├── rbac.ts                 # Role-based access control
 │       ├── audit.ts                # Audit trail logging
 │       ├── export.ts               # CSV/PDF export utilities
-│       ├── gemini.ts               # Google Gemini AI integration
+│       ├── gemini.ts               # OpenAI GPT-4.1-nano integration (file name kept for compatibility)
 │       └── pdf-parser.ts           # PDF text extraction
 ├── public/                         # Static assets
 ├── *.sql                          # Database migrations
@@ -122,7 +122,7 @@ resume-shortlist-assistant/
 
 ### AI Shortlisting
 - Upload multiple resumes (PDF/TXT)
-- Automatic analysis with Google Gemini AI
+- Automatic analysis with OpenAI GPT-4.1-nano
 - Match scoring (0-100)
 - Strengths/weaknesses analysis
 - Auto-shortlist top candidates
@@ -151,7 +151,7 @@ See `RBAC_AUDIT_EXPORT_DOCS.md` for detailed documentation.
 - `RBAC_AUDIT_EXPORT_DOCS.md` - Complete guide for RBAC, Audit Trail, and Export features
 - `AUTH_SETUP.md` - Authentication setup guide
 - `SUPABASE_SETUP.md` - Database setup instructions
-- `GEMINI_AI_SETUP.md` - AI integration guide
+- `OPENAI_MIGRATION.md` - OpenAI GPT-4.1-nano integration guide
 - `PDF_PARSING_IMPLEMENTATION.md` - PDF parsing documentation
 
 ## 🔒 Security
@@ -193,7 +193,7 @@ MIT License - feel free to use this project for personal or commercial purposes.
 
 - Next.js team for the amazing framework
 - Supabase for the backend infrastructure
-- Google for Gemini AI API
+- OpenAI for GPT-4.1-nano API
 - shadcn for UI components inspiration
 
 ---

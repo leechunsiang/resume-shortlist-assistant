@@ -59,11 +59,12 @@ export interface Candidate {
   resume_text?: string;
   linkedin_url?: string;
   current_position?: string;
+  applied_position?: string;
   years_of_experience?: number;
   skills?: string[];
   education?: any;
   work_experience?: any;
-  status: 'pending' | 'shortlisted' | 'rejected' | 'interviewed' | 'hired';
+  status: 'shortlisted' | 'rejected' | 'overridden';
   score?: number;
   notes?: string;
   created_by?: string;
@@ -91,7 +92,7 @@ export interface JobApplication {
   id: string;
   job_id: string;
   candidate_id: string;
-  status: 'pending' | 'shortlisted' | 'rejected' | 'interviewed' | 'hired';
+  status: 'shortlisted' | 'rejected' | 'overridden';
   match_score?: number;
   ai_analysis?: any;
   applied_at: string;
@@ -105,7 +106,7 @@ export interface JobApplication {
 export interface DashboardStats {
   total_candidates: number;
   shortlisted_count: number;
-  pending_review: number;
+  rejected_count: number;
   success_rate: number;
   active_jobs: number;
 }
@@ -331,13 +332,29 @@ export const candidatesApi = {
   getRecent: async (organizationId: string, limit: number = 10) => {
     const { data, error } = await supabase
       .from('candidates')
-      .select('*')
+      .select(`
+        *,
+        job_applications!inner (
+          job_id,
+          job_listings!inner (
+            title
+          )
+        )
+      `)
       .eq('organization_id', organizationId)
       .order('created_at', { ascending: false })
       .limit(limit);
     
     if (error) throw error;
-    return data as Candidate[];
+    
+    // Transform the data to include applied_position
+    const candidates = data?.map((candidate: any) => ({
+      ...candidate,
+      applied_position: candidate.job_applications?.[0]?.job_listings?.title || null,
+      job_applications: undefined // Remove the nested object
+    })) || [];
+    
+    return candidates as Candidate[];
   },
 
   // Get candidate by ID
@@ -552,11 +569,11 @@ export const dashboardApi = {
         .eq('status', 'shortlisted')
         .eq('job_listings.organization_id', organizationId);
 
-      // Get pending candidates
-      const { count: pending } = await supabase
+      // Get rejected candidates
+      const { count: rejected } = await supabase
         .from('job_applications')
         .select('candidate_id, job_listings!inner(organization_id)', { count: 'exact', head: true })
-        .eq('status', 'pending')
+        .eq('status', 'rejected')
         .eq('job_listings.organization_id', organizationId);
 
       // Get total jobs
@@ -572,22 +589,16 @@ export const dashboardApi = {
         .eq('organization_id', organizationId)
         .eq('status', 'active');
 
-      // Calculate success rate (hired / total applications)
-      const { count: hired } = await supabase
-        .from('job_applications')
-        .select('candidate_id, job_listings!inner(organization_id)', { count: 'exact', head: true })
-        .eq('status', 'hired')
-        .eq('job_listings.organization_id', organizationId);
-
+      // Calculate success rate (shortlisted / total candidates)
       const totalApplications = (totalCandidates || 0);
       const successRate = totalApplications > 0 
-        ? Math.round(((hired || 0) / totalApplications) * 100) 
+        ? Math.round(((shortlisted || 0) / totalApplications) * 100) 
         : 0;
 
       return {
         total_candidates: totalCandidates || 0,
         shortlisted_count: shortlisted || 0,
-        pending_review: pending || 0,
+        rejected_count: rejected || 0,
         success_rate: successRate,
         active_jobs: activeJobs || 0
       } as DashboardStats;

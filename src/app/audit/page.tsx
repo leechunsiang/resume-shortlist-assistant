@@ -90,6 +90,11 @@ export default function AuditLogsPage() {
     }
   };
 
+  const formatActionText = (action: string) => {
+    if (action === 'export') return 'Download';
+    return action.charAt(0).toUpperCase() + action.slice(1);
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -104,7 +109,7 @@ export default function AuditLogsPage() {
             className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors"
           >
             <Download className="w-4 h-4" />
-            Export CSV
+            Download CSV
           </button>
         </div>
 
@@ -129,7 +134,7 @@ export default function AuditLogsPage() {
                 <option value="update">Update</option>
                 <option value="delete">Delete</option>
                 <option value="view">View</option>
-                <option value="export">Export</option>
+                <option value="export">Download</option>
               </select>
             </div>
             <div>
@@ -214,7 +219,7 @@ export default function AuditLogsPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getActionBadgeColor(log.action)}`}>
-                          {log.action}
+                          {formatActionText(log.action)}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">

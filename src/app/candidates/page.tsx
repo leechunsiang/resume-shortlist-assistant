@@ -63,8 +63,8 @@ export default function CandidatesPage() {
   // Ripple effects for stat cards
   const totalCandidatesRipple = useRipple();
   const shortlistedRipple = useRipple();
-  const pendingRipple = useRipple();
-  const interviewedRipple = useRipple();
+  const rejectedRipple = useRipple();
+  const overriddenRipple = useRipple();
 
   // Check permissions
   useEffect(() => {
@@ -203,12 +203,8 @@ export default function CandidatesPage() {
         return 'text-emerald-400 bg-emerald-500/10';
       case 'rejected':
         return 'text-red-400 bg-red-500/10';
-      case 'interviewed':
-        return 'text-blue-400 bg-blue-500/10';
-      case 'pending':
-        return 'text-yellow-400 bg-yellow-500/10';
-      case 'hired':
-        return 'text-green-400 bg-green-500/10';
+      case 'overridden':
+        return 'text-purple-400 bg-purple-500/10';
       default:
         return 'text-gray-400 bg-gray-500/10';
     }
@@ -260,8 +256,8 @@ export default function CandidatesPage() {
   const stats = {
     total: candidates.length,
     shortlisted: candidates.filter(c => c.status === 'shortlisted').length,
-    pending: candidates.filter(c => c.status === 'pending').length,
-    interviewed: candidates.filter(c => c.status === 'interviewed').length,
+    rejected: candidates.filter(c => c.status === 'rejected').length,
+    overridden: candidates.filter(c => c.status === 'overridden').length,
   };
 
   return (
@@ -306,7 +302,7 @@ export default function CandidatesPage() {
                     className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition-colors border border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Download className="w-4 h-4" />
-                    <span>Export</span>
+                    <span>Download</span>
                   </button>
 
                   <AnimatePresence>
@@ -433,46 +429,46 @@ export default function CandidatesPage() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, delay: 0.3 }}
-                  onClick={(e) => pendingRipple.addRipple(e)}
-                  className="bg-gray-900/40 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-6 shadow-lg shadow-black/10 hover:shadow-2xl hover:shadow-yellow-500/20 hover:-translate-y-1 hover:border-yellow-500/50 transition-all duration-300 ease-out relative overflow-hidden group cursor-pointer"
+                  onClick={(e) => rejectedRipple.addRipple(e)}
+                  className="bg-gray-900/40 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-6 shadow-lg shadow-black/10 hover:shadow-2xl hover:shadow-red-500/20 hover:-translate-y-1 hover:border-red-500/50 transition-all duration-300 ease-out relative overflow-hidden group cursor-pointer"
                 >
-                  <RippleEffect ripples={pendingRipple.ripples} color="rgba(234, 179, 8, 0.4)" />
+                  <RippleEffect ripples={rejectedRipple.ripples} color="rgba(239, 68, 68, 0.4)" />
                   <div className="absolute inset-0 bg-gradient-to-br from-gray-800/10 via-transparent to-gray-900/20 pointer-events-none"></div>
-                  <div className="absolute -top-12 -right-12 w-24 h-24 bg-yellow-500/5 rounded-full blur-2xl group-hover:bg-yellow-500/10 transition-all duration-300"></div>
+                  <div className="absolute -top-12 -right-12 w-24 h-24 bg-red-500/5 rounded-full blur-2xl group-hover:bg-red-500/10 transition-all duration-300"></div>
                   <div className="flex items-center justify-between mb-4 relative z-10">
-                    <div className="w-12 h-12 bg-yellow-500/20 backdrop-blur-sm rounded-lg flex items-center justify-center border border-yellow-500/30 shadow-lg shadow-yellow-500/10 group-hover:scale-110 transition-transform duration-300">
-                      <svg className="w-6 h-6 text-yellow-400 drop-shadow-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <div className="w-12 h-12 bg-red-500/20 backdrop-blur-sm rounded-lg flex items-center justify-center border border-red-500/30 shadow-lg shadow-red-500/10 group-hover:scale-110 transition-transform duration-300">
+                      <svg className="w-6 h-6 text-red-400 drop-shadow-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                       </svg>
                     </div>
                   </div>
                   <h3 className="text-3xl font-bold text-white mb-2 relative z-10 drop-shadow-md">
-                    <AnimatedCounter value={stats.pending} duration={1.5} delay={0.4} />
+                    <AnimatedCounter value={stats.rejected} duration={1.5} delay={0.4} />
                   </h3>
-                  <p className="text-gray-400 text-sm relative z-10">Pending Review</p>
+                  <p className="text-gray-400 text-sm relative z-10">Rejected</p>
                 </motion.div>
 
                 <motion.div 
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, delay: 0.4 }}
-                  onClick={(e) => interviewedRipple.addRipple(e)}
-                  className="bg-gray-900/40 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-6 shadow-lg shadow-black/10 hover:shadow-2xl hover:shadow-blue-500/20 hover:-translate-y-1 hover:border-blue-500/50 transition-all duration-300 ease-out relative overflow-hidden group cursor-pointer"
+                  onClick={(e) => overriddenRipple.addRipple(e)}
+                  className="bg-gray-900/40 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-6 shadow-lg shadow-black/10 hover:shadow-2xl hover:shadow-purple-500/20 hover:-translate-y-1 hover:border-purple-500/50 transition-all duration-300 ease-out relative overflow-hidden group cursor-pointer"
                 >
-                  <RippleEffect ripples={interviewedRipple.ripples} color="rgba(59, 130, 246, 0.4)" />
+                  <RippleEffect ripples={overriddenRipple.ripples} color="rgba(168, 85, 247, 0.4)" />
                   <div className="absolute inset-0 bg-gradient-to-br from-gray-800/10 via-transparent to-gray-900/20 pointer-events-none"></div>
-                  <div className="absolute -top-12 -right-12 w-24 h-24 bg-blue-500/5 rounded-full blur-2xl group-hover:bg-blue-500/10 transition-all duration-300"></div>
+                  <div className="absolute -top-12 -right-12 w-24 h-24 bg-purple-500/5 rounded-full blur-2xl group-hover:bg-purple-500/10 transition-all duration-300"></div>
                   <div className="flex items-center justify-between mb-4 relative z-10">
-                    <div className="w-12 h-12 bg-blue-500/20 backdrop-blur-sm rounded-lg flex items-center justify-center border border-blue-500/30 shadow-lg shadow-blue-500/10 group-hover:scale-110 transition-transform duration-300">
-                      <svg className="w-6 h-6 text-blue-400 drop-shadow-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    <div className="w-12 h-12 bg-purple-500/20 backdrop-blur-sm rounded-lg flex items-center justify-center border border-purple-500/30 shadow-lg shadow-purple-500/10 group-hover:scale-110 transition-transform duration-300">
+                      <svg className="w-6 h-6 text-purple-400 drop-shadow-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                       </svg>
                     </div>
                   </div>
                   <h3 className="text-3xl font-bold text-white mb-2 relative z-10 drop-shadow-md">
-                    <AnimatedCounter value={stats.interviewed} duration={1.5} delay={0.5} />
+                    <AnimatedCounter value={stats.overridden} duration={1.5} delay={0.5} />
                   </h3>
-                  <p className="text-gray-400 text-sm relative z-10">Interviewed</p>
+                  <p className="text-gray-400 text-sm relative z-10">Overridden</p>
                 </motion.div>
               </div>
 
@@ -499,26 +495,6 @@ export default function CandidatesPage() {
                   Shortlisted ({stats.shortlisted})
                 </button>
                 <button
-                  onClick={() => setFilterStatus('pending')}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${
-                    filterStatus === 'pending'
-                      ? 'bg-emerald-500 text-white'
-                      : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-                  }`}
-                >
-                  Pending ({stats.pending})
-                </button>
-                <button
-                  onClick={() => setFilterStatus('interviewed')}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${
-                    filterStatus === 'interviewed'
-                      ? 'bg-emerald-500 text-white'
-                      : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-                  }`}
-                >
-                  Interviewed ({stats.interviewed})
-                </button>
-                <button
                   onClick={() => setFilterStatus('rejected')}
                   className={`px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${
                     filterStatus === 'rejected'
@@ -526,7 +502,17 @@ export default function CandidatesPage() {
                       : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
                   }`}
                 >
-                  Rejected
+                  Rejected ({stats.rejected})
+                </button>
+                <button
+                  onClick={() => setFilterStatus('overridden')}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${
+                    filterStatus === 'overridden'
+                      ? 'bg-emerald-500 text-white'
+                      : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                  }`}
+                >
+                  Overridden ({stats.overridden})
                 </button>
               </div>
 
@@ -673,7 +659,7 @@ export default function CandidatesPage() {
                         {/* Score */}
                         <div className="text-right ml-4">
                           <p className={`text-4xl font-bold mb-2 drop-shadow-lg ${getScoreColor(candidate.score || 0)}`}>
-                            {candidate.score || 0}
+                            {candidate.score || 0}%
                           </p>
                           <p className="text-gray-400 text-sm mb-3">Score</p>
                           <div className="w-32 h-2 bg-gray-700/50 backdrop-blur-sm rounded-full overflow-hidden border border-gray-600/30 shadow-inner">
@@ -727,38 +713,35 @@ export default function CandidatesPage() {
                     <p className="text-emerald-400">
                       {selectedCandidate.current_position || 'Position not specified'}
                     </p>
-                    {/* Status Selector */}
-                    <div className="mt-2">
-                      <label className="text-xs text-gray-400 block mb-1">Status</label>
-                      <select
-                        value={selectedCandidate.status}
-                        onChange={async (e) => {
-                          const newStatus = e.target.value as Candidate['status'];
-                          try {
-                            await candidatesApi.update(selectedCandidate.id, { status: newStatus });
-                            // Update local state
-                            setSelectedCandidate({ ...selectedCandidate, status: newStatus });
-                            setCandidates(candidates.map(c => 
-                              c.id === selectedCandidate.id ? { ...c, status: newStatus } : c
-                            ));
-                          } catch (error) {
-                            console.error('Error updating status:', error);
-                            alert('Failed to update status');
-                          }
-                        }}
-                        disabled={isViewerRole}
-                        className={`px-3 py-1.5 rounded-lg text-sm font-semibold backdrop-blur-sm border transition-colors ${
-                          isViewerRole 
-                            ? 'bg-gray-700/50 border-gray-600 text-gray-400 cursor-not-allowed' 
-                            : 'bg-gray-800/50 border-gray-600 text-white hover:border-emerald-500/50 cursor-pointer'
-                        } ${getStatusColor(selectedCandidate.status)}`}
-                      >
-                        <option value="pending">Pending</option>
-                        <option value="shortlisted">Shortlisted</option>
-                        <option value="interviewed">Interviewed</option>
-                        <option value="hired">Hired</option>
-                        <option value="rejected">Rejected</option>
-                      </select>
+                    {/* Status Badge */}
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className={`px-3 py-1.5 rounded-lg text-sm font-semibold backdrop-blur-sm border ${getStatusColor(selectedCandidate.status)}`}>
+                        {getStatusLabel(selectedCandidate.status)}
+                      </span>
+                      {/* Override Button for Rejected Candidates */}
+                      {selectedCandidate.status === 'rejected' && !isViewerRole && (
+                        <button
+                          onClick={async () => {
+                            try {
+                              await candidatesApi.update(selectedCandidate.id, { status: 'overridden' });
+                              // Update local state
+                              setSelectedCandidate({ ...selectedCandidate, status: 'overridden' });
+                              setCandidates(candidates.map(c => 
+                                c.id === selectedCandidate.id ? { ...c, status: 'overridden' } : c
+                              ));
+                            } catch (error) {
+                              console.error('Error overriding status:', error);
+                              alert('Failed to override status');
+                            }
+                          }}
+                          className="px-3 py-1.5 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 border border-purple-500/30 hover:border-purple-500/50 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center gap-1"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          Override
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

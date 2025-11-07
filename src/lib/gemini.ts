@@ -1,7 +1,10 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import OpenAI from 'openai';
+import { logApiUsage, calculateCost } from './api-usage';
 
-// Initialize Gemini AI
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY || '');
+// Initialize OpenAI
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY || '',
+});
 
 export interface ResumeAnalysis {
   matchScore: number; // 0-100
@@ -46,19 +49,25 @@ export interface ExtractedCandidateInfo {
 }
 
 /**
- * Extract candidate information from resume text using Gemini AI
+ * Extract candidate information from resume text using OpenAI GPT-4.1-nano
  */
 export async function extractCandidateInfo(
   resumeText: string, 
-  customPrompt?: string
+  customPrompt?: string,
+  userId?: string,
+  organizationId?: string
 ): Promise<ExtractedCandidateInfo> {
+  const startTime = Date.now();
+  let success = false;
+  let errorMessage: string | undefined;
+  let inputTokens = 0;
+  let outputTokens = 0;
+
   try {
     // Check if API key is configured
-    if (!process.env.GOOGLE_GEMINI_API_KEY) {
-      throw new Error('GOOGLE_GEMINI_API_KEY is not configured');
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY is not configured');
     }
-
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
 
     // Use custom prompt if provided, otherwise use default
     const defaultPrompt = `You are an expert at extracting structured information from resumes. Extract the following information from this resume and return it as JSON.
@@ -92,33 +101,29 @@ Provide ONLY the JSON response, no additional text or explanation.`;
     const promptTemplate = customPrompt || defaultPrompt;
     const prompt = promptTemplate.replace('{RESUME_TEXT}', resumeText.substring(0, 10000));
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4.1-nano',
+      messages: [
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      temperature: 0.3,
+      response_format: { type: 'json_object' }
+    });
+
+    // Extract token usage
+    inputTokens = completion.usage?.prompt_tokens || 0;
+    outputTokens = completion.usage?.completion_tokens || 0;
+    const totalTokens = completion.usage?.total_tokens || 0;
+
+    const text = completion.choices[0].message.content || '{}';
     
     console.log('AI Response:', text.substring(0, 200)); // Log first 200 chars for debugging
     
-    // Try to extract JSON from response
-    let jsonText = text.trim();
-    
-    // Remove all markdown code blocks - handle both ``` and ```json
-    jsonText = jsonText.replace(/```json\s*/g, '').replace(/```\s*/g, '');
-    jsonText = jsonText.trim();
-    
-    // Find the first { and last } to extract just the JSON
-    const firstBrace = jsonText.indexOf('{');
-    const lastBrace = jsonText.lastIndexOf('}');
-    
-    if (firstBrace === -1 || lastBrace === -1 || firstBrace >= lastBrace) {
-      console.error('Could not find valid JSON braces in response:', text);
-      throw new Error('AI response does not contain valid JSON');
-    }
-    
-    const jsonOnly = jsonText.substring(firstBrace, lastBrace + 1);
-    
-    console.log('Extracted JSON:', jsonOnly.substring(0, 200));
-    
-    let parsed = JSON.parse(jsonOnly);
+    // Parse the JSON response
+    let parsed = JSON.parse(text);
     
     // If AI returned an array, take the first element
     if (Array.isArray(parsed)) {
@@ -149,10 +154,54 @@ Provide ONLY the JSON response, no additional text or explanation.`;
       extracted.yearsOfExperience = 0;
     }
     
+    success = true;
+
+    // Log API usage to Supabase
+    if (userId && organizationId) {
+      const responseTime = Date.now() - startTime;
+      const costs = calculateCost('gpt-4.1-nano', inputTokens, outputTokens);
+      
+      await logApiUsage({
+        userId,
+        organizationId,
+        endpoint: 'extract_candidate_info',
+        model: 'gpt-4.1-nano',
+        inputTokens,
+        outputTokens,
+        totalTokens: inputTokens + outputTokens,
+        ...costs,
+        requestType: 'single',
+        success: true,
+        responseTimeMs: responseTime,
+      });
+    }
+    
     return extracted;
   } catch (error: any) {
-    console.error('Error extracting candidate info with Gemini:', error);
+    errorMessage = error?.message || 'Unknown error';
+    console.error('Error extracting candidate info with OpenAI:', error);
     console.error('Error details:', error?.message);
+
+    // Log failed API usage
+    if (userId && organizationId) {
+      const responseTime = Date.now() - startTime;
+      const costs = calculateCost('gpt-4.1-nano', inputTokens, outputTokens);
+      
+      await logApiUsage({
+        userId,
+        organizationId,
+        endpoint: 'extract_candidate_info',
+        model: 'gpt-4.1-nano',
+        inputTokens,
+        outputTokens,
+        totalTokens: inputTokens + outputTokens,
+        ...costs,
+        requestType: 'single',
+        success: false,
+        errorMessage,
+        responseTimeMs: responseTime,
+      });
+    }
     
     // Return default values instead of throwing
     return {
@@ -171,20 +220,28 @@ Provide ONLY the JSON response, no additional text or explanation.`;
 }
 
 /**
- * Analyze a candidate's resume against job requirements using Gemini AI
+ * Analyze a candidate's resume against job requirements using OpenAI GPT-4.1-nano
  */
 export async function analyzeResumeMatch(
   candidate: CandidateResume,
   job: JobRequirements,
-  customPrompt?: string
+  customPrompt?: string,
+  userId?: string,
+  organizationId?: string,
+  jobId?: string,
+  candidateId?: string
 ): Promise<ResumeAnalysis> {
+  const startTime = Date.now();
+  let success = false;
+  let errorMessage: string | undefined;
+  let inputTokens = 0;
+  let outputTokens = 0;
+
   try {
     // Check if API key is configured
-    if (!process.env.GOOGLE_GEMINI_API_KEY) {
-      throw new Error('GOOGLE_GEMINI_API_KEY is not configured');
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY is not configured');
     }
-
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
 
     // Use custom prompt if provided, otherwise use default
     const defaultPrompt = `You are an expert HR recruiter and resume analyzer. Analyze the following candidate's resume against the job requirements and provide a detailed assessment.
@@ -240,33 +297,29 @@ Provide ONLY the JSON response, no additional text.`;
       .replace('{CANDIDATE_SKILLS}', candidate.skills?.join(', ') || 'Not specified')
       .replace('{RESUME_TEXT}', candidate.resumeText.substring(0, 8000));
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4.1-nano',
+      messages: [
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      temperature: 0.3,
+      response_format: { type: 'json_object' }
+    });
+
+    // Extract token usage
+    inputTokens = completion.usage?.prompt_tokens || 0;
+    outputTokens = completion.usage?.completion_tokens || 0;
+    const totalTokens = completion.usage?.total_tokens || 0;
+
+    const text = completion.choices[0].message.content || '{}';
     
     console.log('AI Analysis Response:', text.substring(0, 200)); // Log first 200 chars for debugging
     
-    // Try to extract JSON from response
-    let jsonText = text.trim();
-    
-    // Remove all markdown code blocks - handle both ``` and ```json
-    jsonText = jsonText.replace(/```json\s*/g, '').replace(/```\s*/g, '');
-    jsonText = jsonText.trim();
-    
-    // Find the first { and last } to extract just the JSON
-    const firstBrace = jsonText.indexOf('{');
-    const lastBrace = jsonText.lastIndexOf('}');
-    
-    if (firstBrace === -1 || lastBrace === -1 || firstBrace >= lastBrace) {
-      console.error('Could not find valid JSON braces in analysis response:', text);
-      throw new Error('AI response does not contain valid JSON');
-    }
-    
-    const jsonOnly = jsonText.substring(firstBrace, lastBrace + 1);
-    
-    console.log('Extracted Analysis JSON:', jsonOnly.substring(0, 200));
-    
-    const analysis: ResumeAnalysis = JSON.parse(jsonOnly);
+    // Parse the JSON response
+    const analysis: ResumeAnalysis = JSON.parse(text);
     
     // Validate and set defaults
     analysis.matchScore = Math.max(0, Math.min(100, analysis.matchScore || 0));
@@ -282,10 +335,58 @@ Provide ONLY the JSON response, no additional text.`;
       analysis.summary = `Candidate scored ${analysis.matchScore}% match for this position.`;
     }
     
+    success = true;
+
+    // Log API usage to Supabase
+    if (userId && organizationId) {
+      const responseTime = Date.now() - startTime;
+      const costs = calculateCost('gpt-4.1-nano', inputTokens, outputTokens);
+      
+      await logApiUsage({
+        userId,
+        organizationId,
+        endpoint: 'analyze_resume_match',
+        model: 'gpt-4.1-nano',
+        inputTokens,
+        outputTokens,
+        totalTokens: inputTokens + outputTokens,
+        ...costs,
+        requestType: 'single',
+        candidateId,
+        jobId,
+        success: true,
+        responseTimeMs: responseTime,
+      });
+    }
+    
     return analysis;
   } catch (error: any) {
-    console.error('Error analyzing resume with Gemini:', error);
+    errorMessage = error?.message || 'Unknown error';
+    console.error('Error analyzing resume with OpenAI:', error);
     console.error('Error details:', error?.message);
+
+    // Log failed API usage
+    if (userId && organizationId) {
+      const responseTime = Date.now() - startTime;
+      const costs = calculateCost('gpt-4.1-nano', inputTokens, outputTokens);
+      
+      await logApiUsage({
+        userId,
+        organizationId,
+        endpoint: 'analyze_resume_match',
+        model: 'gpt-4.1-nano',
+        inputTokens,
+        outputTokens,
+        totalTokens: inputTokens + outputTokens,
+        ...costs,
+        requestType: 'single',
+        candidateId,
+        jobId,
+        success: false,
+        errorMessage,
+        responseTimeMs: responseTime,
+      });
+    }
     
     // Return default analysis instead of throwing
     return {
@@ -308,7 +409,10 @@ export async function batchAnalyzeCandidates(
   candidates: CandidateResume[],
   job: JobRequirements,
   onProgress?: (completed: number, total: number) => void,
-  customPrompt?: string
+  customPrompt?: string,
+  userId?: string,
+  organizationId?: string,
+  jobId?: string
 ): Promise<Map<string, ResumeAnalysis>> {
   const results = new Map<string, ResumeAnalysis>();
   const total = candidates.length;
@@ -316,7 +420,15 @@ export async function batchAnalyzeCandidates(
   for (let i = 0; i < candidates.length; i++) {
     const candidate = candidates[i];
     try {
-      const analysis = await analyzeResumeMatch(candidate, job, customPrompt);
+      const analysis = await analyzeResumeMatch(
+        candidate, 
+        job, 
+        customPrompt,
+        userId,
+        organizationId,
+        jobId,
+        undefined // candidateId not available in batch
+      );
       results.set(candidate.email, analysis);
       
       if (onProgress) {

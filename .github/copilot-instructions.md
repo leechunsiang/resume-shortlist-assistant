@@ -1,7 +1,7 @@
 # Resume Shortlist Assistant - Next.js Project Setup
 
 ## Project Overview
-Building a resume shortlist assistant web app using Next.js, React, Supabase, shadcn/ui, and Google Gemini AI.
+Building a resume shortlist assistant web app using Next.js, React, Supabase, shadcn/ui, and OpenAI GPT-4.1-nano.
 
 ## Setup Progress
 
@@ -15,9 +15,11 @@ Building a resume shortlist assistant web app using Next.js, React, Supabase, sh
 - [x] Authentication system with Supabase (login/signup)
 - [x] Two-step signup form
 - [x] User profile display (first name, last name, username)
-- [x] Google Gemini AI integration for resume shortlisting
+- [x] OpenAI GPT-4.1-nano integration for resume shortlisting
 - [x] Role-Based Access Control (RBAC) system
 - [x] Search/filter functionality for job listings and candidates
+- [x] Smooth animations for date picker component
+- [x] Remove pending status - automatic rejection for low scores
 - [ ] Install and configure shadcn/ui (optional - for future enhancements)
 - [x] Documentation complete
 
@@ -62,7 +64,7 @@ Building a resume shortlist assistant web app using Next.js, React, Supabase, sh
 - ✅ Comprehensive documentation
 
 ### AI Features
-- ✅ Google Gemini AI integration
+- ✅ OpenAI GPT-4.1-nano integration
 - ✅ Automatic resume shortlisting
 - ✅ AI-powered candidate analysis
 - ✅ Match scoring (0-100)
@@ -87,10 +89,22 @@ Building a resume shortlist assistant web app using Next.js, React, Supabase, sh
 
 ### Candidate Management
 - ✅ Status update dropdown in candidate detail panel
-- ✅ Change candidate status (pending, shortlisted, interviewed, hired, rejected)
+- ✅ Change candidate status (shortlisted, rejected, overridden)
 - ✅ Real-time status updates without page reload
 - ✅ RBAC-compliant (viewers cannot edit)
 - ✅ Color-coded status indicators
+- ✅ Automatic rejection for candidates with score < 50 (red zone)
+- ✅ Binary status system (shortlisted/rejected only for new candidates)
+- ✅ Override button for manually approving rejected candidates
+- ✅ Removed interviewed and hired statuses for simplified workflow
+
+### UI/UX Enhancements
+- ✅ Smooth animations for date picker component
+- ✅ Framer Motion integration for micro-interactions
+- ✅ Calendar icon rotation and scale effects
+- ✅ Staggered fade-in for calendar day buttons
+- ✅ Hover and tap animations for better feedback
+- ✅ Custom easing functions for natural feel
 
 ## Key Files
 
@@ -114,11 +128,11 @@ Building a resume shortlist assistant web app using Next.js, React, Supabase, sh
 - `supabase-organization-update.sql` - Database migration for new fields
 
 ### AI Integration
-- `src/lib/gemini.ts` - Gemini AI service
+- `src/lib/gemini.ts` - OpenAI GPT-4.1-nano service (filename kept for compatibility)
 - `src/lib/pdf-parser.ts` - PDF text extraction utilities
 - `src/app/api/ai-shortlist/route.ts` - API endpoint for AI analysis
 - `src/app/filters/page.tsx` - AI prompt configuration page
-- `GEMINI_AI_SETUP.md` - Setup instructions
+- `OPENAI_MIGRATION.md` - OpenAI integration guide and setup
 - `PDF_PARSING_IMPLEMENTATION.md` - PDF parsing documentation
 - `AI_PROMPT_CONFIGURATION.md` - Custom prompt guide
 
@@ -131,6 +145,15 @@ Building a resume shortlist assistant web app using Next.js, React, Supabase, sh
 ### Candidate Management
 - `src/app/candidates/page.tsx` - Candidate list and status updates
 - `CANDIDATE_STATUS_UPDATE.md` - Status update feature documentation
+- `REMOVE_PENDING_STATUS.md` - Pending status removal and auto-rejection
+- `supabase/migrations/20251107100000_remove_pending_status.sql` - Database migration
+- `REMOVE_INTERVIEWED_HIRED_STATUS.md` - Interviewed/hired removal and override feature
+- `supabase/migrations/20251107110000_remove_interviewed_hired_status.sql` - Database migration
+
+### UI Components
+- `src/components/ui/date-picker.tsx` - Animated date picker component
+- `src/components/ui/calendar.tsx` - Enhanced calendar with animations
+- `DATE_PICKER_ANIMATIONS.md` - Date picker animation documentation
 
 ### Authentication
 - `src/app/login/page.tsx` - Login page
@@ -158,8 +181,8 @@ Visit http://localhost:3000 to view the application.
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 
-# Google Gemini AI
-GOOGLE_GEMINI_API_KEY=your_gemini_api_key
+# OpenAI
+OPENAI_API_KEY=your_openai_api_key
 ```
 
 ## How to Use AI Shortlisting

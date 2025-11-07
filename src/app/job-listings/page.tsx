@@ -532,6 +532,26 @@ function JobListingsContent() {
               <p className="text-gray-400">Manage and create job postings</p>
             </div>
             <div className="flex items-center gap-3">
+              {canUseAI && (
+                <button
+                  onClick={() => {
+                    if (selectedJob) {
+                      handleAIShortlist(selectedJob);
+                    } else if (jobs.length > 0) {
+                      // If no job selected, shortlist the first active job
+                      const firstActiveJob = jobs.find(j => j.status === 'active') || jobs[0];
+                      handleAIShortlist(firstActiveJob);
+                    }
+                  }}
+                  disabled={isAnalyzing || jobs.length === 0}
+                  title={isAnalyzing ? 'AI analysis in progress...' : jobs.length === 0 ? 'No jobs available' : 'Use AI to shortlist candidates for this job'}
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-purple-500/20"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  <span>AI Shortlist</span>
+                </button>
+              )}
+
               {canExport && (
                 <div className="relative">
                   <button
@@ -546,7 +566,7 @@ function JobListingsContent() {
                     className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition-colors border border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Download className="w-4 h-4" />
-                    <span>Export</span>
+                    <span>Download</span>
                   </button>
 
                   <AnimatePresence>
@@ -1350,25 +1370,6 @@ function JobListingsContent() {
               <div className="p-8 space-y-6">
                 {/* Action Buttons - Icon Buttons */}
                 <div className="flex items-center justify-center gap-6">
-                  {/* AI Shortlist Button */}
-                  {canUseAI && (
-                    <div className="group relative">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleAIShortlist(selectedJob);
-                        }}
-                        disabled={isAnalyzing}
-                        className="w-14 h-14 flex items-center justify-center bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-full font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-purple-500/20 hover:scale-110"
-                      >
-                        <Sparkles className="w-6 h-6" />
-                      </button>
-                      <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-gray-900 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none border border-purple-500/30 shadow-lg">
-                        AI Shortlist Candidates
-                      </div>
-                    </div>
-                  )}
-                  
                   {/* Edit Job Button */}
                   {canUpdate && (
                     <div className="group relative">

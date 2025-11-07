@@ -156,10 +156,12 @@ export default function Home() {
         setJobs(jobsData.filter(job => job.status === 'active'));
         setRecentActivities(activitiesData || []);
         
-        // Get pending review candidates (status = 'pending')
+        // Get recently added candidates (last 5)
         const allCandidates = await candidatesApi.getAll(currentOrganization.id);
-        const pendingCandidates = allCandidates.filter((c: Candidate) => c.status === 'pending').slice(0, 5);
-        setPendingReviewCandidates(pendingCandidates);
+        const recentCandidates = allCandidates
+          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+          .slice(0, 5);
+        setPendingReviewCandidates(recentCandidates);
       } catch (err) {
         console.error('[DASHBOARD] Error fetching data:', err);
         setError('database');
@@ -190,10 +192,8 @@ export default function Home() {
         return 'text-emerald-400';
       case 'rejected':
         return 'text-red-400';
-      case 'interviewed':
-        return 'text-blue-400';
-      case 'hired':
-        return 'text-green-400';
+      case 'overridden':
+        return 'text-purple-400';
       default:
         return 'text-gray-400';
     }
@@ -201,6 +201,20 @@ export default function Home() {
 
   const getStatusLabel = (status: string) => {
     return status.charAt(0).toUpperCase() + status.slice(1);
+  };
+
+  const getScoreColor = (score: number) => {
+    if (score >= 85) return 'text-emerald-400';
+    if (score >= 70) return 'text-blue-400';
+    if (score >= 50) return 'text-yellow-400';
+    return 'text-red-400';
+  };
+
+  const getProgressBarColor = (score: number) => {
+    if (score >= 85) return 'bg-emerald-400';
+    if (score >= 70) return 'bg-blue-400';
+    if (score >= 50) return 'bg-yellow-400';
+    return 'bg-red-400';
   };
 
   const getActivityIcon = (action: string) => {
@@ -379,7 +393,7 @@ export default function Home() {
                     </div>
                     <h3 className="text-lg font-semibold text-white mb-1">AI-Powered Shortlisting</h3>
                     <p className="text-gray-400 text-xs">
-                      Automatically analyze and rank candidates based on job requirements with Google Gemini AI
+                      Automatically analyze and rank candidates based on job requirements with OpenAI GPT-4.1-nano
                     </p>
                   </div>
 
@@ -705,37 +719,33 @@ export default function Home() {
                                   {candidate.first_name} {candidate.last_name}
                                 </h3>
                                 <p className="text-gray-400 text-sm">
-                                  {candidate.current_position || 'No position specified'}
+                                  {candidate.applied_position || 'No position specified'}
                                 </p>
                               </div>
                             </div>
                             <div className="text-right">
                               <div className="flex items-center gap-2 mb-1">
-                                <span className="text-white font-semibold drop-shadow-sm">{candidate.score || 0}</span>
+                                <span className={`font-semibold drop-shadow-sm ${getScoreColor(candidate.score || 0)}`}>{candidate.score || 0}%</span>
                                 <div className="w-20 h-2 bg-gray-700/50 backdrop-blur-sm rounded-full overflow-hidden border border-gray-600/30">
                                   <motion.div
                                     initial={{ width: 0 }}
                                     animate={{ width: `${candidate.score || 0}%` }}
                                     transition={{ duration: 1.5, delay: index * 0.1 + 0.3, ease: [0.25, 0.1, 0.25, 1] }}
-                                    className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full shadow-sm shadow-emerald-500/50"
+                                    className={`h-full ${getProgressBarColor(candidate.score || 0)} rounded-full shadow-sm`}
                                   />
                                 </div>
                               </div>
-                              {(candidate.status === 'shortlisted' || candidate.status === 'pending') ? (
+                              {candidate.status === 'shortlisted' ? (
                                 <PulseStatusBadge
-                                  className={`text-xs px-2 py-1 rounded-full backdrop-blur-sm border ${
-                                    candidate.status === 'shortlisted' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' :
-                                    'bg-gray-500/20 text-gray-400 border-gray-500/30'
-                                  }`}
-                                  pulseColor={candidate.status === 'shortlisted' ? 'emerald' : 'gray'}
+                                  className="text-xs px-2 py-1 rounded-full backdrop-blur-sm border bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                                  pulseColor="emerald"
                                 >
                                   {getStatusLabel(candidate.status)}
                                 </PulseStatusBadge>
                               ) : (
                                 <span className={`text-xs px-2 py-1 rounded-full backdrop-blur-sm border ${
                                   candidate.status === 'rejected' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
-                                  candidate.status === 'interviewed' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
-                                  candidate.status === 'hired' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
+                                  candidate.status === 'overridden' ? 'bg-purple-500/20 text-purple-400 border-purple-500/30' :
                                   'bg-gray-500/20 text-gray-400 border-gray-500/30'
                                 }`}>
                                   {getStatusLabel(candidate.status)}
