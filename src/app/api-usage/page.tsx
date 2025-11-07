@@ -4,15 +4,17 @@ import { useEffect, useState } from 'react';
 import { DashboardLayout } from '@/components/dashboard-layout';
 import { useOrganization } from '@/contexts/organization-context';
 import { authApi } from '@/lib/supabase';
-import { 
-  getUserUsageSummary, 
+import {
+  getUserUsageSummary,
   getOrganizationUsageSummary,
   getUserRecentLogs,
+  UsageSummary
+} from '@/lib/api-usage';
+import {
   formatCost,
   formatTokens,
   exportUsageLogsToCSV,
-  UsageSummary
-} from '@/lib/api-usage';
+} from '@/lib/api-usage-client';
 import { useRouter } from 'next/navigation';
 import { Download, TrendingUp, Zap, DollarSign, Activity } from 'lucide-react';
 import { motion } from 'framer-motion';
