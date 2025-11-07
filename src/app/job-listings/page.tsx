@@ -325,9 +325,9 @@ function JobListingsContent() {
     setJobToDelete(null);
   };
 
-  const handleAIShortlist = async (job: JobListing) => {
-    // Open upload modal instead of directly analyzing
-    setSelectedJob(job);
+  const handleAIShortlist = async (job?: JobListing) => {
+    // Open upload modal with optional job preselection
+    setSelectedJob(job || null);
     setIsUploadModalOpen(true);
   };
 
@@ -340,6 +340,17 @@ function JobListingsContent() {
         file.name.endsWith('.pdf') ||
         file.name.endsWith('.txt')
       );
+      
+      // Check if adding new files would exceed the limit
+      const currentCount = uploadedFiles.length;
+      const newFilesCount = fileArray.length;
+      const totalCount = currentCount + newFilesCount;
+      
+      if (totalCount > 10) {
+        alert(`You can only upload up to 10 resumes at once. Currently ${currentCount} files uploaded. You can add ${10 - currentCount} more.`);
+        return;
+      }
+      
       setUploadedFiles(prev => [...prev, ...fileArray]);
     }
   };
@@ -1587,9 +1598,9 @@ function JobListingsContent() {
                 className="bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700 rounded-2xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
               >
             <div className="flex items-center justify-between mb-6">
-              <div>
+              <div className="flex-1">
                 <h2 className="text-2xl font-bold text-white mb-1">Upload Candidate Resumes</h2>
-                <p className="text-gray-400 text-sm">For: {selectedJob.title}</p>
+                <p className="text-gray-400 text-sm">Select a job position and upload resumes for AI analysis</p>
               </div>
               <button
                 onClick={() => {
@@ -1602,23 +1613,47 @@ function JobListingsContent() {
               </button>
             </div>
 
+            {/* Job Selection Dropdown */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Select Job Position
+              </label>
+              <select
+                value={selectedJob?.id || ''}
+                onChange={(e) => {
+                  const job = jobs.find(j => j.id === e.target.value);
+                  setSelectedJob(job || null);
+                }}
+                className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+              >
+                <option value="" disabled>Choose a job position...</option>
+                {jobs.map((job) => (
+                  <option key={job.id} value={job.id}>
+                    {job.title} - {job.department} ({job.location})
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Upload Area */}
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-300 mb-3">
-                Upload Resumes (TXT format recommended)
+                Upload Resumes
               </label>
               
-              {/* Warning about PDF */}
-              <div className="mb-3 bg-orange-500/10 border border-orange-500/30 rounded-lg p-3">
+              {/* Upload Guidelines */}
+              <div className="mb-3 bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
                 <div className="flex items-start gap-2">
-                  <svg className="w-5 h-5 text-orange-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  <svg className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <div>
-                    <p className="text-orange-300 text-xs font-medium mb-1">PDF Support Limited</p>
-                    <p className="text-orange-400/80 text-xs">
-                      For best results, convert resumes to TXT format before uploading. PDF text extraction may not work properly.
-                    </p>
+                  <div className="flex-1">
+                    <p className="text-blue-300 text-xs font-medium mb-1">Upload Guidelines</p>
+                    <ul className="text-blue-400/80 text-xs space-y-1">
+                      <li>• <strong>File types:</strong> TXT or PDF</li>
+                      <li>• <strong>Max file size:</strong> 10MB per file</li>
+                      <li>• <strong>Max files:</strong> 10 resumes per upload</li>
+                    </ul>
                   </div>
                 </div>
               </div>
@@ -1643,7 +1678,7 @@ function JobListingsContent() {
                   </div>
                   <p className="text-white font-medium mb-1">Click to upload or drag and drop</p>
                   <p className="text-gray-400 text-sm">TXT or PDF files (max 10MB each)</p>
-                  <p className="text-gray-500 text-xs mt-1">TXT format strongly recommended</p>
+                  <p className="text-emerald-400 text-xs mt-2">✓ Up to 10 resumes per batch</p>
                 </label>
               </div>
             </div>
@@ -1717,11 +1752,16 @@ function JobListingsContent() {
               </button>
               <button
                 onClick={processResumes}
-                disabled={uploadedFiles.length === 0}
+                disabled={uploadedFiles.length === 0 || !selectedJob}
                 className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:from-gray-700 disabled:to-gray-700 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-all flex items-center gap-2"
               >
                 <Sparkles className="w-5 h-5" />
-                <span>Analyze {uploadedFiles.length} Resume{uploadedFiles.length !== 1 ? 's' : ''}</span>
+                <span>
+                  {!selectedJob 
+                    ? 'Select a job first' 
+                    : `Analyze ${uploadedFiles.length} Resume${uploadedFiles.length !== 1 ? 's' : ''}`
+                  }
+                </span>
               </button>
             </div>
               </motion.div>

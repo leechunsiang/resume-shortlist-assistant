@@ -138,36 +138,77 @@ export async function POST(request: NextRequest) {
             undefined // candidateId not yet created
           );
 
-          // Create candidate in database
+          // Create or update candidate in database
           // Determine status: shortlisted if score >= 50, rejected if score < 50
           const matchScore = Math.floor(analysis.matchScore);
           const candidateStatus = matchScore >= 50 ? 'shortlisted' : 'rejected';
           
-          const { data: candidate, error: candidateError } = await supabase
+          // First, check if candidate already exists
+          const { data: existingCandidate } = await supabase
             .from('candidates')
-            .insert({
-              organization_id: organizationId,
-              first_name: candidateInfo.firstName || 'Unknown',
-              last_name: candidateInfo.lastName || 'Candidate',
-              email: candidateInfo.email,
-              phone: candidateInfo.phone || null,
-              resume_text: resumeText.replace(/\0/g, ''),
-              current_position: candidateInfo.currentPosition || null,
-              years_of_experience: sanitizeInteger(candidateInfo.yearsOfExperience),
-              skills: sanitizeArray(candidateInfo.skills),
-              education: candidateInfo.education || null,
-              score: matchScore,
-              status: candidateStatus,
-            })
-            .select()
+            .select('*')
+            .eq('organization_id', organizationId)
+            .eq('email', candidateInfo.email)
             .single();
 
-          if (candidateError) {
-            console.error('Error creating candidate:', candidateError);
+          let candidate;
+          
+          if (existingCandidate) {
+            // Candidate exists - use existing record for new application
+            candidate = existingCandidate;
+            console.log(`Using existing candidate: ${candidate.email}`);
+          } else {
+            // New candidate - create record
+            const { data: newCandidate, error: candidateError } = await supabase
+              .from('candidates')
+              .insert({
+                organization_id: organizationId,
+                first_name: candidateInfo.firstName || 'Unknown',
+                last_name: candidateInfo.lastName || 'Candidate',
+                email: candidateInfo.email,
+                phone: candidateInfo.phone || null,
+                resume_text: resumeText.replace(/\0/g, ''),
+                current_position: candidateInfo.currentPosition || null,
+                years_of_experience: sanitizeInteger(candidateInfo.yearsOfExperience),
+                skills: sanitizeArray(candidateInfo.skills),
+                education: candidateInfo.education || null,
+                score: matchScore,
+                status: candidateStatus,
+              })
+              .select()
+              .single();
+
+            if (candidateError) {
+              console.error('Error creating candidate:', candidateError);
+              continue;
+            }
+            
+            candidate = newCandidate;
+          }
+
+          // Check if application already exists for this job
+          const { data: existingApp } = await supabase
+            .from('job_applications')
+            .select('id')
+            .eq('job_id', jobId)
+            .eq('candidate_id', candidate.id)
+            .single();
+
+          if (existingApp) {
+            console.log(`Application already exists for candidate ${candidate.email} to job ${jobId}`);
+            results.push({
+              fileName: resume.fileName,
+              candidateId: candidate.id,
+              candidateName: `${candidate.first_name} ${candidate.last_name}`,
+              matchScore: matchScore,
+              recommendation: analysis.recommendation,
+              skipped: true,
+              reason: 'Already applied to this position'
+            });
             continue;
           }
 
-          // Create job application
+          // Create new job application
           await supabase
             .from('job_applications')
             .insert({
@@ -183,9 +224,10 @@ export async function POST(request: NextRequest) {
           results.push({
             fileName: resume.fileName,
             candidateId: candidate.id,
-            candidateName: `${candidateInfo.firstName} ${candidateInfo.lastName}`,
+            candidateName: `${candidate.first_name} ${candidate.last_name}`,
             matchScore: analysis.matchScore,
             recommendation: analysis.recommendation,
+            success: true
           });
         } catch (error) {
           console.error(`Error processing resume ${resume.fileName}:`, error);
@@ -217,35 +259,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Filter out candidates who already have applications for this job
-    const { data: existingApplications } = await supabase
-      .from('job_applications')
-      .select('candidate_id')
-      .eq('job_id', jobId);
-
-    const existingCandidateIds = new Set(
-      existingApplications?.map(app => app.candidate_id) || []
-    );
-
-    const candidatesToAnalyze = candidates
-      .filter(c => !existingCandidateIds.has(c.id))
-      .map(c => ({
-        id: c.id,
-        firstName: c.first_name,
-        lastName: c.last_name,
-        email: c.email,
-        resumeText: c.resume_text || '',
-        currentPosition: c.current_position,
-        yearsOfExperience: c.years_of_experience,
-        skills: c.skills,
-      }));
-
-    if (candidatesToAnalyze.length === 0) {
-      return NextResponse.json(
-        { error: 'All candidates have already applied to this job' },
-        { status: 400 }
-      );
-    }
+    // Allow candidates to apply to multiple jobs
+    // Just convert all candidates to the expected format
+    const candidatesToAnalyze = candidates.map(c => ({
+      id: c.id,
+      firstName: c.first_name,
+      lastName: c.last_name,
+      email: c.email,
+      resumeText: c.resume_text || '',
+      currentPosition: c.current_position,
+      yearsOfExperience: c.years_of_experience,
+      skills: c.skills,
+    }));
 
     // Prepare job requirements
     const jobRequirements = {
@@ -276,6 +301,20 @@ export async function POST(request: NextRequest) {
         const matchScore = Math.floor(analysis.matchScore);
         const applicationStatus = matchScore >= 50 ? 'shortlisted' : 'rejected';
         
+        // Check if application already exists for this job and candidate
+        const { data: existingApp } = await supabase
+          .from('job_applications')
+          .select('id')
+          .eq('job_id', jobId)
+          .eq('candidate_id', candidate.id)
+          .single();
+
+        if (existingApp) {
+          // Skip if already applied
+          console.log(`Candidate ${candidate.email} already applied to job ${jobId}`);
+          continue;
+        }
+        
         const appData = {
           job_id: jobId,
           candidate_id: candidate.id,
@@ -286,7 +325,7 @@ export async function POST(request: NextRequest) {
           reviewed_at: new Date().toISOString(),
         };
 
-        // Create new application (no need to check for existing since we filtered them out)
+        // Create new application
         await supabase
           .from('job_applications')
           .insert(appData);
