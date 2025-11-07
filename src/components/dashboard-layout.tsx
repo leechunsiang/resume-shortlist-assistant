@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Sidebar, SidebarBody, SidebarLink } from "@/components/ui/sidebar";
-import { LayoutDashboard, Briefcase, Users, Filter, Settings, LogOut, LogIn, Activity } from "lucide-react";
+import { LayoutDashboard, Briefcase, Users, Filter, Settings, LogOut, LogIn } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -123,13 +123,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       href: "/filters",
       icon: (
         <Filter className="text-neutral-200 h-5 w-5 flex-shrink-0" />
-      ),
-    },
-    {
-      label: "API Usage",
-      href: "/api-usage",
-      icon: (
-        <Activity className="text-neutral-200 h-5 w-5 flex-shrink-0" />
       ),
     },
     {

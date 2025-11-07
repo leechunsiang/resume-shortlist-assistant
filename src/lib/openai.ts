@@ -1,5 +1,4 @@
 import OpenAI from 'openai';
-import { logApiUsage, calculateCost } from './api-usage';
 
 // Initialize OpenAI
 const openai = new OpenAI({
@@ -156,53 +155,12 @@ Provide ONLY the JSON response, no additional text or explanation.`;
     
     success = true;
 
-    // Log API usage to Supabase
-    if (userId && organizationId) {
-      const responseTime = Date.now() - startTime;
-      const costs = calculateCost('gpt-4.1-nano', inputTokens, outputTokens);
-      
-      await logApiUsage({
-        userId,
-        organizationId,
-        endpoint: 'extract_candidate_info',
-        model: 'gpt-4.1-nano',
-        inputTokens,
-        outputTokens,
-        totalTokens: inputTokens + outputTokens,
-        ...costs,
-        requestType: 'single',
-        success: true,
-        responseTimeMs: responseTime,
-      });
-    }
-    
     return extracted;
   } catch (error: any) {
     errorMessage = error?.message || 'Unknown error';
     console.error('Error extracting candidate info with OpenAI:', error);
     console.error('Error details:', error?.message);
 
-    // Log failed API usage
-    if (userId && organizationId) {
-      const responseTime = Date.now() - startTime;
-      const costs = calculateCost('gpt-4.1-nano', inputTokens, outputTokens);
-      
-      await logApiUsage({
-        userId,
-        organizationId,
-        endpoint: 'extract_candidate_info',
-        model: 'gpt-4.1-nano',
-        inputTokens,
-        outputTokens,
-        totalTokens: inputTokens + outputTokens,
-        ...costs,
-        requestType: 'single',
-        success: false,
-        errorMessage,
-        responseTimeMs: responseTime,
-      });
-    }
-    
     // Return default values instead of throwing
     return {
       firstName: 'Unknown',
@@ -337,57 +295,12 @@ Provide ONLY the JSON response, no additional text.`;
     
     success = true;
 
-    // Log API usage to Supabase
-    if (userId && organizationId) {
-      const responseTime = Date.now() - startTime;
-      const costs = calculateCost('gpt-4.1-nano', inputTokens, outputTokens);
-      
-      await logApiUsage({
-        userId,
-        organizationId,
-        endpoint: 'analyze_resume_match',
-        model: 'gpt-4.1-nano',
-        inputTokens,
-        outputTokens,
-        totalTokens: inputTokens + outputTokens,
-        ...costs,
-        requestType: 'single',
-        candidateId,
-        jobId,
-        success: true,
-        responseTimeMs: responseTime,
-      });
-    }
-    
     return analysis;
   } catch (error: any) {
     errorMessage = error?.message || 'Unknown error';
     console.error('Error analyzing resume with OpenAI:', error);
     console.error('Error details:', error?.message);
 
-    // Log failed API usage
-    if (userId && organizationId) {
-      const responseTime = Date.now() - startTime;
-      const costs = calculateCost('gpt-4.1-nano', inputTokens, outputTokens);
-      
-      await logApiUsage({
-        userId,
-        organizationId,
-        endpoint: 'analyze_resume_match',
-        model: 'gpt-4.1-nano',
-        inputTokens,
-        outputTokens,
-        totalTokens: inputTokens + outputTokens,
-        ...costs,
-        requestType: 'single',
-        candidateId,
-        jobId,
-        success: false,
-        errorMessage,
-        responseTimeMs: responseTime,
-      });
-    }
-    
     // Return default analysis instead of throwing
     return {
       matchScore: 50,
