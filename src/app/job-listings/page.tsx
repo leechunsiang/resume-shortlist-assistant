@@ -6,7 +6,7 @@ import { useOrganization } from '@/contexts/organization-context';
 import { DashboardLayout } from '@/components/dashboard-layout';
 import { AnimatePresence, motion } from 'framer-motion';
 import { X, Sparkles, Edit, Users, Trash2, Download, FileText, Check, ChevronLeft, ChevronRight, Lock } from 'lucide-react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import TextType from '@/components/text-type';
 import { useRipple, RippleEffect } from '@/components/ripple-effect';
 import { AnimatedCounter, PulseStatusBadge } from '@/components/animated-counter';
@@ -29,7 +29,6 @@ import {
 
 function JobListingsContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { can } = usePermissions();
   const { isViewer } = useRole();
   const { currentOrganization, loading: orgLoading } = useOrganization();
@@ -110,16 +109,18 @@ function JobListingsContent() {
 
   // Check for create parameter and auto-open modal
   useEffect(() => {
-    const shouldCreate = searchParams.get('create');
-    if (shouldCreate === 'true' && canCreate && !isModalOpen) {
-      console.log('[JOB LISTINGS] Auto-opening create modal from URL parameter');
-      setIsModalOpen(true);
-      // Clean up URL parameter
+    if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
-      url.searchParams.delete('create');
-      window.history.replaceState({}, '', url.toString());
+      const shouldCreate = url.searchParams.get('create');
+      if (shouldCreate === 'true' && canCreate && !isModalOpen) {
+        console.log('[JOB LISTINGS] Auto-opening create modal from URL parameter');
+        setIsModalOpen(true);
+        // Clean up URL parameter
+        url.searchParams.delete('create');
+        window.history.replaceState({}, '', url.toString());
+      }
     }
-  }, [searchParams, canCreate, isModalOpen]);
+  }, [canCreate, isModalOpen]);
 
   useEffect(() => {
     async function fetchData() {
