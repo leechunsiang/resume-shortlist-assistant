@@ -1,3 +1,38 @@
+// Helper to update candidate status in DB after all job applications are created
+async function updateCandidateStatuses(organizationId: string) {
+  const { data: allCandidates } = await supabase
+    .from('candidates')
+    .select('id, organization_id')
+    .eq('organization_id', organizationId);
+
+  for (const candidate of allCandidates || []) {
+    // Get all job applications for this candidate
+    const { data: apps } = await supabase
+      .from('job_applications')
+      .select('status, match_score')
+      .eq('candidate_id', candidate.id);
+
+    if (!apps || apps.length === 0) continue;
+
+    // If any application is overridden, status is 'overridden'.
+    // Else if max score >= 50 and any application is shortlisted, status is 'shortlisted'.
+    // Otherwise, status is 'rejected'.
+    let computedStatus: 'shortlisted' | 'rejected' | 'overridden' = 'rejected';
+    if (apps.some(app => app.status === 'overridden')) {
+      computedStatus = 'overridden';
+    } else {
+      const maxScore = Math.max(...apps.map(app => app.match_score || 0));
+      if (maxScore >= 50 && apps.some(app => app.status === 'shortlisted')) {
+        computedStatus = 'shortlisted';
+      }
+    }
+
+    await supabase
+      .from('candidates')
+      .update({ status: computedStatus })
+      .eq('id', candidate.id);
+  }
+}
 import { NextRequest, NextResponse } from 'next/server';
 import { analyzeResumeMatch, batchAnalyzeCandidates, extractCandidateInfo } from '@/lib/openai';
 import { supabase } from '@/lib/supabase';
@@ -338,6 +373,9 @@ export async function POST(request: NextRequest) {
         });
       }
     }
+
+    // Update candidate statuses in DB after all applications are created
+    await updateCandidateStatuses(organizationId);
 
     return NextResponse.json({
       success: true,

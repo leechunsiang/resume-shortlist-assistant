@@ -765,7 +765,7 @@ export default function Home() {
               </div>
 
               {/* Box 5: Recent Activities */}
-              <div style={{ gridArea: 'box-5' }}>
+              {/* <div style={{ gridArea: 'box-5' }}>
                 <motion.div 
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
@@ -831,7 +831,7 @@ export default function Home() {
                     />
                   )}
                 </motion.div>
-              </div>
+              </div> */}
 
             </div>
             </>

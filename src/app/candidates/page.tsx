@@ -333,7 +333,22 @@ export default function CandidatesPage() {
     return 'bg-red-400';
   };
 
-  const filteredCandidates = candidates
+  // Compute candidate status based on highest score (typed)
+  const candidatesWithComputedStatus = candidates.map(candidate => {
+    if (!candidate.job_applications || candidate.job_applications.length === 0) {
+      return { ...candidate, status: candidate.status as 'shortlisted' | 'rejected' | 'overridden' };
+    }
+    const maxScore = Math.max(...candidate.job_applications.map(app => app.match_score || 0));
+    let computedStatus: 'shortlisted' | 'rejected' | 'overridden' = 'rejected';
+    if (candidate.job_applications.some(app => app.status === 'overridden')) {
+      computedStatus = 'overridden';
+    } else if (maxScore >= 50 && candidate.job_applications.some(app => app.status === 'shortlisted')) {
+      computedStatus = 'shortlisted';
+    }
+    return { ...candidate, status: computedStatus };
+  });
+
+  const filteredCandidates = candidatesWithComputedStatus
     .filter(c => filterStatus === 'all' || c.status === filterStatus)
     .filter(c => {
       if (!searchQuery.trim()) return true;
